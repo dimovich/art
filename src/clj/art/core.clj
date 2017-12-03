@@ -13,3 +13,7 @@
     :appenders {:println (timbre/println-appender {:stream :auto})}})
 
 
+
+
+(defn -main [& args]
+  (d/run))

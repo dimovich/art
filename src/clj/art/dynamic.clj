@@ -13,9 +13,9 @@
              :window-size [740 560]
              :size [500 500 500]
              :radius 80
-             :cohesion 0.58
-             :separation 0.56
-             :alignment 0.3
+             :cohesion 0.59
+             :separation 0.58
+             :alignment 0.15
              :max-vel 2
              :view-angle 250})
 

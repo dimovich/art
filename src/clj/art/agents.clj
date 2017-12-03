@@ -115,7 +115,7 @@
                             separation alignment
                             view-angle max-vel size]}]
 
-  (let [tree (apply t/octree 0 0 0 size)]
+  (let [tree (apply t/octree 0 0 0 (map (partial * 2) size))]
 
     (doseq [a agents]
       (g/add-point tree (:pos a) a))
@@ -124,7 +124,8 @@
      (fn [a]
        (let [others (->> (t/select-with-sphere tree (:pos a) radius)
                          (remove #{a})
-                         (distance a))]
+                         (distance a)
+                         (remove #(zero? (:dist %))))]
          (if (empty? others)
            a
            (let [force (reduce
