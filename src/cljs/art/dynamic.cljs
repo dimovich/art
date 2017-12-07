@@ -7,40 +7,43 @@
             [art.agents :as a]
             [taoensso.timbre :refer [info]]))
 
+(def agents (atom nil))
 
 (def config {:agent-count 100
              :color [200 200 0]
              :window-size [768 560]
              :size [1000 500 500]
              :radius 60
-             :cohesion 0.27
-             :separation 0.30
-             :alignment 0.55
+             :cohesion 0.35
+             :separation 0.38
+             :alignment 0.5
              :max-vel 6
              :view-angle 250})
 
 
 (defn setup []
   (let [tree (apply t/octree 0 0 0 (:size config))]
-    (q/frame-rate 60)
+    (reset! agents (apply a/generate-agents
+                          (mapv config [:agent-count :size])))
+    (q/frame-rate 30)
     (q/stroke-weight 0.5)
-    (q/stroke 200)
+    (q/stroke 180)
     (q/no-fill)
     (q/background 0)
-    {:tree tree
-     :agents (apply a/generate-agents
-                    (mapv config [:agent-count :size]))}))
+    {:tree-updater (a/update-tree tree)
+     :swarm-fn (a/swarm tree config)
+     :agents @agents}))
 
 
 
 (defn draw-box [[x y z]]
-  ;;(q/no-fill)  
+  (q/no-fill)  
   (q/with-translation [(/ x 2)  (/ y 2)  (/ z 2)]
     (q/box x y z)))
 
 
 (defn draw-agents [agents]
-  ;;(apply q/fill (:color config))
+  (apply q/fill (:color config))
   (doseq [a agents]
     (q/with-translation (:pos a)
       (q/box 10))))
@@ -55,16 +58,15 @@
 
 
 
-(defn update-state [state]
+(defn update-state [{:keys [tree-updater agents swarm-fn] :as state}]
+  (tree-updater agents)
   (update state :agents
-          #(-> %
-               (a/swarm config)
+          #(-> (swarm-fn %)
                (a/move config)
                (a/bounce config))))
 
 
 (def state (atom false))
-
 
 
 (defn ^:export create []
@@ -79,6 +81,7 @@
     :update update-state
     ;;    :features [:no-start]
     :size (:window-size config)))
+
 
 (defn ^:export toggle []
   (q/with-sketch (q/get-sketch-by-id "art")

@@ -45,6 +45,14 @@
 (def reverse-z (v/vec3 1 1 -1))
 
 
+(extend-type t/MutableOctreeNode
+  g/IClear
+  (clear!
+    [_]
+    (t/set-children _ nil)
+    _))
+
+
 (defn bounce [agents {[w h d] :size}]
   (mapv
    (fn [{[x y z :as pos] :pos :as agent}]
@@ -59,50 +67,46 @@
    agents))
 
 
-(defn update-tree [tree agents]
-  (reduce
-   #(g/add-point % (:pos %2) %2)
-   (g/clear! tree)
-   agents))
+(defn update-tree [tree]
+  (fn [agents]
+    (reduce
+     #(g/add-point % (:pos %2) %2)
+     (g/clear! tree)
+     agents)))
 
 
-(defn swarm-separate [a others radius]
-  (let [force (reduce
-               (fn [v o]
-                 (m/+ v
-                      (m/* (m/- (:pos a)
-                                (:pos o))
-                           (/ radius (:dist o)))))
-               (v/vec3)
-               others)]
-    (when (< 0 (m/mag-squared force))
-      (m/normalize force))))
+(defn swarm-separate [p others r]
+  (let [pos (:pos p)]
+    (m/normalize
+     (reduce
+      #(m/+ % (m/* (m/- pos
+                        (:pos %2))
+                   (/ r (:dist %2))))
+      (v/vec3)
+      others))))
 
 
 (defn swarm-align [a others radius]
-  (let [force (reduce
-               (fn [v o]
-                 (m/+ v
-                      (m/* (:vel o)
-                           (/ radius (:dist o)))))
-               (v/vec3)
-               others)]
-    (when (< 0 (m/mag-squared force))
-      (m/normalize force))))
+  (m/normalize
+   (reduce
+    #(m/+
+      % (m/*
+         (:vel %2)
+         (/ radius (:dist %2))))
+    (v/vec3)
+    others)))
 
 
 (defn swarm-cohere [a others radius]
   (let [cohesion (reduce
-                  (fn [v o]
-                    (m/+ v (:pos o)))
+                  #(m/+ % (:pos %2))
                   (v/vec3)
                   others)
         scaled (m/div cohesion (count others))
         dist (g/dist (:pos a) scaled)
         force (m/* (m/- scaled (:pos a))
                    (/ radius dist))]
-    (when (< 0 (m/mag-squared force))
-      (m/normalize force))))
+    (m/normalize force)))
 
 
 
@@ -111,14 +115,10 @@
     (assoc o :dist (g/dist (:pos a) (:pos o)))))
 
 
-(defn swarm [agents {:keys [radius cohesion
-                            separation alignment
-                            view-angle max-vel size]}]
-
-  (let [tree (apply t/octree 0 0 0 size)]
-    (doseq [a agents]
-      (g/add-point tree (:pos a) a))
-    
+(defn swarm [tree {:keys [radius cohesion
+                          separation alignment
+                          view-angle max-vel size]}]
+  (fn [agents]
     (mapv
      (fn [a]
        (let [others (->> (t/select-with-sphere tree (:pos a) radius)
@@ -130,14 +130,12 @@
            (let [force (reduce
                         m/+
                         (v/vec3)
-                        (remove
-                         nil?
-                         [(some-> (swarm-separate a others radius)
-                                  (m/* separation)) 
-                          (some-> (swarm-align a others radius)
-                                  (m/* alignment))
-                          (some-> (swarm-cohere a others radius)
-                                  (m/* cohesion))]))
+                        [(-> (swarm-separate a others radius)
+                             (m/* separation)) 
+                         (-> (swarm-align a others radius)
+                             (m/* alignment))
+                         (-> (swarm-cohere a others radius)
+                             (m/* cohesion))])
                  acc (m/+ (:acc a) force)]
              (assoc a :acc acc)))))
      agents)))
