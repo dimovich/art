@@ -9,12 +9,12 @@
 
 (def agents (atom nil))
 
-(def config {:agent-count 100
+(def config {:agent-count 80
              :color [200 200 0]
              :window-size [768 560]
              :size [1000 500 500]
-             :radius 60
-             :cohesion 0.35
+             :radius 70
+             :cohesion 0.36
              :separation 0.38
              :alignment 0.5
              :max-vel 6
@@ -25,7 +25,7 @@
   (let [tree (apply t/octree 0 0 0 (:size config))]
     (reset! agents (apply a/generate-agents
                           (mapv config [:agent-count :size])))
-    (q/frame-rate 30)
+    (q/frame-rate 60)
     (q/stroke-weight 0.5)
     (q/stroke 180)
     (q/no-fill)

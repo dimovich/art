@@ -45,12 +45,12 @@
 (def reverse-z (v/vec3 1 1 -1))
 
 
-(extend-type t/MutableOctreeNode
-  g/IClear
-  (clear!
-    [_]
-    (t/set-children _ nil)
-    _))
+#_(extend-type t/MutableOctreeNode
+    g/IClear
+    (clear!
+      [_]
+      (t/set-children _ nil)
+      _))
 
 
 (defn bounce [agents {[w h d] :size}]
@@ -71,7 +71,7 @@
   (fn [agents]
     (reduce
      #(g/add-point % (:pos %2) %2)
-     (g/clear! tree)
+     (t/set-children tree nil)
      agents)))
 
 
