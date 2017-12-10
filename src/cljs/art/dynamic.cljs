@@ -29,8 +29,8 @@
 
 (defn setup []
   (let [tree (apply t/octree 0 0 0 (:size config))
-        agents (apply a/generate-agents
-                      (mapv config [:agent-count :size]))]
+        agents (a/agents->array (apply a/generate-agents
+                                       (mapv config [:agent-count :size])))]
     (q/frame-rate 60)
     (q/stroke-weight 0.5)
     (q/stroke 180)
@@ -80,8 +80,7 @@
   
     (reset! state
             (cond-> @state
-              (zero? (mod tick 2)) (update :trail into (for [{pos :pos} agents]
-                                                         (apply v/vec3 pos)))
+              (zero? (mod tick 2)) (update :trail into (a/get-positions agents config))
               :default (update :tick inc)))))
 
 

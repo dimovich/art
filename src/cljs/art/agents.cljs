@@ -44,16 +44,34 @@
     array))
 
 
-(defn move [agents & [{:keys [max-vel]}]]
+
+(defn get-agent [arr idx prop]
+  (let [idx (+ (* prop 3) (* idx 9))]
+    (v/vec3 (aget arr idx)
+            (aget arr (+ idx 1))
+            (aget arr (+ idx 2)))))
+
+
+(defn set-agent [arr idx prop v]
+  (let [idx (+ (* prop 3) (* idx 9))
+        [x y z] v]
+    (aset arr idx x)
+    (aset arr (+ idx 1) y)
+    (aset arr (+ idx 2) z)))
+
+
+(defn move [agents & [{:keys [max-vel
+                              agent-count]}]]
   ;;(info agents)
 
-  (loop [agents agents]
-    (when-let [{:keys [vel acc pos] :as a} (first agents)]
-      (let [force (m/limit (m/+ vel (m/normalize (v/randvec3) max-vel)) max-vel)]
-        (m/+! pos force)
-        ;;(m/*! (:acc a) 0)
-        )
-      (recur (next agents)))))
+  (loop [idx 0]
+    (when (< idx agent-count)
+      (let [pos (get-agent agents idx POS)
+            vel (get-agent agents idx VEL)
+            acc (get-agent agents idx ACC)]
+        (let [force (m/limit (m/+ vel (m/normalize (v/randvec3) max-vel)) max-vel)]
+          (set-agent agents idx POS (m/+ pos force))))
+      (recur (inc idx)))))
 
 
 
@@ -63,17 +81,31 @@
 (def reverse-z (v/vec3 1 1 -1))
 
 
-(defn bounce [agents {[w h d] :size}]
-  (loop [agents agents]
-    (when-let [{[x y z] :pos vel :vel} (first agents)]
-      (cond-> vel
-        (or (> x w)
-            (< x 0)) (m/*! reverse-x)
-        (or (> y h)
-            (< y 0)) (m/*! reverse-y)
-        (or (> z d)
-            (< z 0)) (m/*! reverse-z))
-      (recur (next agents)))))
+(defn bounce [agents {[w h d] :size
+                      :keys [agent-count]}]
+  (loop [idx 0]
+    (when (< idx agent-count)
+      (let [pos (get-agent agents idx POS)
+            vel (get-agent agents idx VEL)
+            [x y z] pos]
+        (set-agent agents idx VEL
+                   (cond-> vel
+                     (or (> x w)
+                         (< x 0)) (m/* reverse-x)
+                     (or (> y h)
+                         (< y 0)) (m/* reverse-y)
+                     (or (> z d)
+                         (< z 0)) (m/* reverse-z)))
+        
+        (recur (inc idx))))))
+
+
+
+(defn get-positions [agents {:keys [agent-count]}]
+  (loop [idx 0 xs []]
+    (if (< idx agent-count)
+      (recur (inc idx) (conj xs (get-agent agents idx POS)))
+      xs)))
 
 
 (defn update-tree [tree]
