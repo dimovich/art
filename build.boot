@@ -1,7 +1,7 @@
 (set-env!
  :source-paths #{"src/clj" "src/cljs"}
  :resource-paths #{"resources"}
- :dependencies '[[org.clojure/clojure "1.9.0-RC2"]
+ :dependencies '[[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.9.946"]
 
                  [adzerk/boot-cljs-repl     "0.3.3"  :scope "test"]
@@ -14,6 +14,7 @@
                  [org.clojure/tools.nrepl   "0.2.13"]
                  [cider/cider-nrepl         "0.15.1"]
 
+                 [amalloy/ring-buffer "1.2.1"]
                  
                  [quil "2.6.0"]
                  [com.taoensso/timbre "4.10.0"]

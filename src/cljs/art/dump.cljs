@@ -96,3 +96,13 @@
                  :f (agent-swarm tree config)}
      :listeners {:iter (update-tree tree)}}))
 
+
+
+
+
+#_(extend-type t/MutableOctreeNode
+    g/IClear
+    (clear!
+      [_]
+      (t/set-children _ nil)
+      _))
