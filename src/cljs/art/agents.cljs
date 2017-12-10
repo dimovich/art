@@ -31,17 +31,12 @@
                 :acc (v/vec3)}))))))
 
 
-(defn agents->array [agents]
-  (let [agentsize 9
-        array (ta/float32 (* agentsize (count agents)))
-        agents (mapcat (fn [a]
-                         (mapcat #(% a) [:pos :vel :acc]))
-                       agents)]
-    (doall
-     (map-indexed (fn [i v]
-                    (aset array i v))
-                  agents))
-    array))
+(defn agents->array [agents ks]
+  (reduce
+   (fn [m k]
+     (assoc m k (ta/float32 (mapcat k agents))))
+   {}
+   ks))
 
 
 
@@ -60,17 +55,27 @@
     (aset arr (+ idx 2) z)))
 
 
-(defn move [agents & [{:keys [max-vel
-                              agent-count]}]]
-  ;;(info agents)
+(defn get-vec3 [data idx]
+  (v/vec3 (aget data (* 3 idx))
+          (aget data (+ 1 (* 3 idx)))
+          (aget data (+ 2 (* 3 idx)))))
 
+
+(defn set-vec3 [data idx [x y z]]
+  (aset data (* 3 idx) x)
+  (aset data (+ 1 (* 3 idx)) y)
+  (aset data (+ 2 (* 3 idx)) z))
+
+
+(defn move [{count :count {:keys [pos vel acc]} :data}
+            {:keys [max-vel]}]
   (loop [idx 0]
-    (when (< idx agent-count)
-      (let [pos (get-agent agents idx POS)
-            vel (get-agent agents idx VEL)
-            acc (get-agent agents idx ACC)]
-        (let [force (m/limit (m/+ vel (m/normalize (v/randvec3) max-vel)) max-vel)]
-          (set-agent agents idx POS (m/+ pos force))))
+    (when (< idx count)
+      (let [apos (get-vec3 pos idx)
+            avel (get-vec3 vel idx)
+            aacc (get-vec3 acc idx)]
+        (let [force (m/limit (m/+ avel aacc) max-vel)]
+          (set-vec3 pos idx (m/+ apos force))))
       (recur (inc idx)))))
 
 
@@ -81,22 +86,20 @@
 (def reverse-z (v/vec3 1 1 -1))
 
 
-(defn bounce [agents {[w h d] :size
-                      :keys [agent-count]}]
+(defn bounce [{count :count {:keys [pos vel acc]} :data}
+              {[w h d] :size}]
   (loop [idx 0]
-    (when (< idx agent-count)
-      (let [pos (get-agent agents idx POS)
-            vel (get-agent agents idx VEL)
-            [x y z] pos]
-        (set-agent agents idx VEL
-                   (cond-> vel
-                     (or (> x w)
-                         (< x 0)) (m/* reverse-x)
-                     (or (> y h)
-                         (< y 0)) (m/* reverse-y)
-                     (or (> z d)
-                         (< z 0)) (m/* reverse-z)))
-        
+    (when (< idx count)
+      (let [[x y z] (get-vec3 pos idx)
+            avel (get-vec3 vel idx)]
+        (set-vec3 vel idx
+                  (cond-> avel
+                    (or (> x w)
+                        (< x 0)) (m/* reverse-x)
+                    (or (> y h)
+                        (< y 0)) (m/* reverse-y)
+                    (or (> z d)
+                        (< z 0)) (m/* reverse-z)))
         (recur (inc idx))))))
 
 
@@ -104,7 +107,7 @@
 (defn get-positions [agents {:keys [agent-count]}]
   (loop [idx 0 xs []]
     (if (< idx agent-count)
-      (recur (inc idx) (conj xs (get-agent agents idx POS)))
+      (recur (inc idx) (cons (get-agent agents idx POS) xs))
       xs)))
 
 
