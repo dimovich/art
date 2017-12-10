@@ -6,21 +6,22 @@
             [thi.ng.geom.vector :as v]
             [thi.ng.math.core :as m]
             [thi.ng.geom.spatialtree :as t]
+            [thi.ng.typedarrays.core :as ta]
             [art.agents :as a]
             [taoensso.timbre :refer [info]]))
 
 
-(def config {:agent-count 200
+(def config {:agent-count 70
              :color [200 200 0]
              :window-size [768 600]
-             :size [800 500 500]
-             :pos [-50 50 -700]
-             :radius 60
-             :cohesion 0.3
-             :separation 0.3
-             :alignment 0.8
+             :size [800 600 500]
+             :pos [0 0 -600]
+             :radius 80
+             :cohesion 0.38
+             :separation 0.4
+             :alignment 0.4
              :max-vel 6
-             :trail-size 800})
+             :trail-size 180})
 
 
 
@@ -48,9 +49,9 @@
 
 
 (defn draw-box [[x y z]]
-  (q/no-fill)
+  ;;(q/no-fill)
   (q/stroke-weight 0.5)
-  (q/stroke 33)
+  ;;(q/stroke 33)
   (q/with-translation [(/ x 2)  (/ y 2)  (/ z 2)]
     (q/box x y z)))
 
@@ -58,13 +59,19 @@
 (defn draw-agents [{{:keys [pos]} :data
                     count :count}]
   (q/no-stroke)
+  ;;(q/stroke-weight 3)
+  ;;(q/begin-shape :points)
   (loop [idx 0]
     (when (< idx count)
       (let [apos (a/get-vec3 pos idx)]
         (apply q/fill (m/normalize apos 255))
+        ;;(apply q/stroke (m/normalize apos 255))
+        ;;(apply q/vertex apos)
         (q/with-translation apos
           (q/box 10)))
-      (recur (inc idx)))))
+      (recur (inc idx))))
+  ;;(q/end-shape)
+  )
 
 
 (defn draw-trail [trail]
@@ -80,15 +87,17 @@
 
 (defn update-state! [state]
   (let [{:keys [tick tree-updater agents swarm-fn]} @state]
-    (a/move agents config)
-    ;;(tree-updater agents)
-    ;;    (swarm-fn agents config)
-    (a/bounce agents config)
-  
+    (swap! state update :trail into (a/get-positions agents))
     #_(reset! state
               (cond-> @state
-                (zero? (mod tick 2)) (update :trail into (get-in agents [:data :pos]))
-                :default (update :tick inc)))))
+                (zero? (mod tick 1)) (update :trail into (a/get-positions agents))
+                :default (update :tick inc)))
+    
+    
+    (tree-updater agents)
+    (swarm-fn agents config)
+    (a/move agents config)
+    (a/bounce agents config)))
 
 
 (defn draw []
@@ -96,9 +105,9 @@
   
   (q/with-translation (:pos config)
     (q/background 0)
-    ;;    (draw-box (:size config))
-    (draw-agents (:agents @state))
-    ;;(draw-trail (:trail @state))
+    ;;(draw-box (:size config))
+    ;;(draw-agents (:agents @state))
+    (draw-trail (:trail @state))
     ))
 
 
