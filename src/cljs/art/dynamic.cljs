@@ -12,24 +12,24 @@
 
 (def state (atom {:active false}))
 
-(def config {:agent-count 100
+(def config {:agent-count 150
              :color [200 200 0]
              :window-size [900 600]
-             :size [800 600 500]
-             :pos [0 0 -600]
-             :radius 60
-             :cohesion 0.38
+             :size [800 800 500]
+             :pos [0 200 -600]
+             :radius 80
+             :cohesion 0.39
              :separation 0.4
-             :alignment 0.5
-             :max-vel 6
-             :trail-size 150})
+             :alignment 0.6
+             :max-vel 8
+             :trail-size 250})
 
 
 (defn setup []
   (let [tree (apply t/octree 0 0 0 (:size config))
         agents (a/generate-agents config)]
     (q/frame-rate 60)
-    (q/stroke-weight 0.5)
+    (q/stroke-weight 3)
     (q/stroke 180)
     (q/no-fill)
     (q/background 0)
@@ -44,7 +44,7 @@
 
 
 (defn draw-box [[x y z]]
-  (q/stroke-weight 0.5)
+  (q/stroke-weight 0.1)
   (q/with-translation [(/ x 2)  (/ y 2)  (/ z 2)]
     (q/box x y z)))
 
@@ -69,7 +69,7 @@
 
 
 (defn draw-trail [trail]
-  (q/stroke-weight 3)
+  
   (q/begin-shape :points)
   (loop [trail trail]
     (when-let [p (first trail)]
@@ -80,6 +80,7 @@
 
 
 (defn update-state [state]
+;;  (info (:navigation-3d state))
   (let [{:keys [agents tree-fn swarm-fn positions-fn tick]} state]
     (tree-fn agents)
     (swarm-fn agents config)
@@ -89,11 +90,11 @@
 
 
 (defn draw [state]
-  (q/with-translation (:pos config)
-    (q/background 0)
-    (draw-box (:size config))
-    (draw-agents (:agents state))
-    (draw-trail (:trail state))))
+  ;;q/with-translation (:pos config)
+  (q/background 0)
+  ;;(draw-box (:size config))
+  ;;(draw-agents (:agents state))
+  (draw-trail (:trail state)))
 
 
 
@@ -107,6 +108,10 @@
   (q/defsketch art
     :renderer :p3d
     :middleware [qm/fun-mode qm/navigation-3d]
+    :navigation-3d {:position [340.06592727916393 105.44126878160894 991.7662366785296]
+                    :straight [0.08818531557111595 0.35380829942837455 -0.8719076123592358]
+                    :up [-0.008166460209455039 0.9551572896947682 0.14789964782999468]}
+    
     :setup setup
     :draw draw
     :update update-state
