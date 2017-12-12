@@ -75,17 +75,7 @@
 (defn get-positions []
   (let [arr (array)]
     (fn [agents]
-      (map #(apply v/vec3 (.-pos %)) agents)
-      #_(let [size (count agents)]
-          (loop [idx 0 arr '()]
-            (if (< idx size)
-              (let [pos (.-pos (aget agents idx))]
-                (recur (inc idx)
-                       (cons (v/vec3 (get pos 0)
-                                     (get pos 1)
-                                     (get pos 2))
-                             arr)))
-              arr))))))
+      (map #(apply v/vec3 (.-pos %)) agents))))
 
 
 (defn update-tree [tree]
@@ -183,8 +173,9 @@
                 pos (.-pos a)
                 others (t/select-with-sphere tree pos radius)
                 dists (distance agents a others)]
-            (when (<= 2 (count others))
+            (if (<= 2 (count others))
               (m/+! acc (m/+ (swarm-separate agents dists a others radius separation)
                              (swarm-align agents dists a others radius alignment)
-                             (swarm-cohere agents dists a others radius cohesion)))))
+                             (swarm-cohere agents dists a others radius cohesion)))
+              (m/+! acc (v/randvec3))))
           (recur (inc idx)))))))

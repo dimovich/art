@@ -10,10 +10,11 @@
             [art.agents :as a]
             [taoensso.timbre :refer [info]]))
 
+(def state (atom {:active false}))
 
 (def config {:agent-count 100
              :color [200 200 0]
-             :window-size [768 600]
+             :window-size [900 600]
              :size [800 600 500]
              :pos [0 0 -600]
              :radius 60
@@ -21,10 +22,7 @@
              :separation 0.4
              :alignment 0.5
              :max-vel 6
-             :trail-size 230})
-
-
-(defonce state (atom {:active false}))
+             :trail-size 150})
 
 
 (defn setup []
@@ -35,19 +33,18 @@
     (q/stroke 180)
     (q/no-fill)
     (q/background 0)
-    (swap! state merge {:tick 0
-                        :tree-fn (a/update-tree tree)
-                        :swarm-fn (a/swarm tree config)
-                        :positions-fn (a/get-positions)
-                        :trail (r/ring-buffer (:trail-size config))
-                        :agents agents})))
+    {:tick 0
+     :angle 0
+     :tree-fn (a/update-tree tree)
+     :swarm-fn (a/swarm tree config)
+     :positions-fn (a/get-positions)
+     :trail (r/ring-buffer (:trail-size config))
+     :agents agents}))
 
 
 
 (defn draw-box [[x y z]]
-  ;;(q/no-fill)
   (q/stroke-weight 0.5)
-  ;;(q/stroke 33)
   (q/with-translation [(/ x 2)  (/ y 2)  (/ z 2)]
     (q/box x y z)))
 
@@ -82,25 +79,21 @@
   (q/end-shape))
 
 
-(defn update-state! [state]
-  (let [{:keys [agents tree-fn swarm-fn positions-fn tick]} @state]
+(defn update-state [state]
+  (let [{:keys [agents tree-fn swarm-fn positions-fn tick]} state]
     (tree-fn agents)
     (swarm-fn agents config)
     (a/move agents config)
     (a/bounce agents config)
-    ;;(swap! state update :trail into (positions-fn agents))
-    ))
+    (update state :trail into (positions-fn agents))))
 
 
-(defn draw []
-  (update-state! state)
-  
+(defn draw [state]
   (q/with-translation (:pos config)
     (q/background 0)
-    ;;(draw-box (:size config))
-    (draw-agents (:agents @state))
-    ;;(draw-trail (:trail @state))
-    ))
+    (draw-box (:size config))
+    (draw-agents (:agents state))
+    (draw-trail (:trail state))))
 
 
 
@@ -113,8 +106,10 @@
   
   (q/defsketch art
     :renderer :p3d
+    :middleware [qm/fun-mode qm/navigation-3d]
     :setup setup
     :draw draw
+    :update update-state
     :size (:window-size config)))
 
 
