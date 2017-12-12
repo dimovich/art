@@ -21,8 +21,7 @@
              :separation 0.4
              :alignment 0.5
              :max-vel 6
-             :trail-size 180})
-
+             :trail-size 230})
 
 
 (defonce state (atom {:active false}))
@@ -36,8 +35,10 @@
     (q/stroke 180)
     (q/no-fill)
     (q/background 0)
-    (swap! state merge {:tree-updater (a/update-tree tree)
+    (swap! state merge {:tick 0
+                        :tree-fn (a/update-tree tree)
                         :swarm-fn (a/swarm tree config)
+                        :positions-fn (a/get-positions)
                         :trail (r/ring-buffer (:trail-size config))
                         :agents agents})))
 
@@ -60,7 +61,6 @@
         (let [a (aget agents idx)
               pos (.-pos a)
               color (m/normalize pos 255)]
-          ;;(apply q/fill color)
           (q/stroke (get color 0)
                     (get color 1)
                     (get color 2))
@@ -83,12 +83,13 @@
 
 
 (defn update-state! [state]
-  (let [{:keys [tree-updater agents swarm-fn]} @state]
-    (tree-updater agents)
+  (let [{:keys [agents tree-fn swarm-fn positions-fn tick]} @state]
+    (tree-fn agents)
     (swarm-fn agents config)
     (a/move agents config)
     (a/bounce agents config)
-    (swap! state update :trail into (a/get-positions agents))))
+    ;;(swap! state update :trail into (positions-fn agents))
+    ))
 
 
 (defn draw []
@@ -97,8 +98,8 @@
   (q/with-translation (:pos config)
     (q/background 0)
     ;;(draw-box (:size config))
-    ;;(draw-agents (:agents @state))
-    (draw-trail (:trail @state))
+    (draw-agents (:agents @state))
+    ;;(draw-trail (:trail @state))
     ))
 
 
