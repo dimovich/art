@@ -9,60 +9,33 @@
 
 
 (defrecord Agent [pos vel acc])
-
-
-(defn generate-agents [n [x y z]]
-  (into
-   []
-   (take n (repeatedly
-            (fn []
-              (map->Agent
-               {:pos (v/vec3 (rand-int x)
-                             (rand-int y)
-                             (rand-int z))
-                
-                :vel (->> #(rand-nth (range -4.5 4.5 0.5))
-                          repeatedly
-                          (take 3)
-                          (apply v/vec3))
-                
-                :acc (v/vec3)}))))))
-
-
-(defn agents->array [agents ks]
-  (reduce
-   (fn [m k]
-     (assoc m k (ta/float32 (mapcat k agents))))
-   {}
-   ks))
+(defrecord Trail [arr size idx])
 
 
 
-(defn get-vec3 [data idx]
-  (v/vec3 (aget data (* 3 idx))
-          (aget data (+ 1 (* 3 idx)))
-          (aget data (+ 2 (* 3 idx)))))
+(defn generate-agents [{:keys [size max-vel agent-count]}]
+  (let [xs (array)]
+    (loop [idx 0]
+      (when (< idx agent-count)
+        (->> {:pos (apply v/vec3 (map rand-int size))
+              :vel (v/randvec3 max-vel)
+              :acc (v/vec3 0)}
+             map->Agent
+             (aset xs idx ))
+        (recur (inc idx))))
+    xs))
 
 
-(defn set-vec3 [data idx [x y z]]
-  (aset data (* 3 idx) x)
-  (aset data (+ 1 (* 3 idx)) y)
-  (aset data (+ 2 (* 3 idx)) z))
-
-
-(defn move [{count :count {:keys [pos vel acc]} :data}
-            {:keys [max-vel]}]
-  (loop [idx 0]
-    (when (< idx count)
-      (let [apos (get-vec3 pos idx)
-            avel (get-vec3 vel idx)
-            aacc (get-vec3 acc idx)]
-        (let [force (m/limit (m/+ avel aacc) max-vel)]
-          (set-vec3 pos idx (m/+ apos force))
-          (set-vec3 vel idx force)
-          (set-vec3 acc idx [0 0 0])))
-      (recur (inc idx)))))
-
+(defn move [agents {:keys [max-vel]}]
+  (let [size (count agents)]
+    (loop [idx 0]
+      (when (< idx size)
+        (let [a (aget agents idx)]
+          (aset a "vel"
+                (m/limit (m/+ (.-vel a) (.-acc a)) max-vel))
+          (m/+! (.-pos a) (.-vel a))
+          (m/*! (.-acc a) 0))
+        (recur (inc idx))))))
 
 
 
@@ -71,54 +44,66 @@
 (def reverse-z (v/vec3 1 1 -1))
 
 
-(defn bounce [{count :count {:keys [pos vel acc]} :data}
-              {[w h d] :size}]
-  (loop [idx 0]
-    (when (< idx count)
-      (let [[x y z] (get-vec3 pos idx)
-            avel (get-vec3 vel idx)]
-        (set-vec3 vel idx
-                  (cond-> avel
-                    (or
-                     (< x 0)
-                     (> x w)) (m/* reverse-x)
+(defn bounce [agents {[w h d] :size}]
+  (let [size (count agents)]
+    (loop [idx 0]
+      (when (< idx size)
+        (let [a (aget agents idx)
+              [x y z] (.-pos a)
+              vel     (.-vel a)]
+          (cond-> vel
+            (or
+             (< x 0)
+             (> x w)) (m/*! reverse-x)
 
-                    (or
-                     (< y 0)
-                     (> y h)) (m/* reverse-y)
+            (or
+             (< y 0)
+             (> y h)) (m/*! reverse-y)
 
-                    (or
-                     (< z 0)
-                     (> z d)) (m/* reverse-z)))
+            (or
+             (< z 0)
+             (> z d)) (m/*! reverse-z))
         
-        (recur (inc idx))))))
+          (recur (inc idx)))))))
 
 
 
-(defn get-positions [{{:keys [pos]} :data
-                      count :count}]
-  (loop [idx 0 xs '()]
-    (if (< idx count)
-      (recur (inc idx) (cons (get-vec3 pos idx) xs))
-      xs)))
+
+(defn get-positions [agents]
+  (map #(apply v/vec3 (:pos %)) agents)
+  #_(reduce
+     #(cons (.-pos %2) )
+     '()
+     agents)
+  #_(let [size (count agents)
+          arr (array)]
+      (loop [idx 0]
+        (when (< idx size)
+          (->> (aget agents idx "pos")
+               (apply v/vec3)
+               (aset arr idx))
+          (recur (inc idx))))
+      arr))
 
 
 (defn update-tree [tree]
-  (fn [{{:keys [pos acc vel]} :data
-        count :count}]
+  (fn [agents]
     (t/set-children tree nil)
-    (loop [idx 0]
-      (when (< idx count)
-        (g/add-point tree (get-vec3 pos idx) idx)
-        (recur (inc idx))))))
+    (dotimes [idx (count agents)]
+      (g/add-point tree (aget agents idx "pos") idx))
+    
+    #_(let [size (count agents)]
+        (loop [idx 0]
+          (when (< idx size)
+            (g/add-point tree (get-vec3 pos idx) idx)
+            (recur (inc idx)))))))
 
 
-(defn swarm-separate [{:keys [pos vel acc]} idx others r mod]
-  (let [force (v/vec3)
-        apos (get-vec3 pos idx)]
+(defn swarm-separate [agents idx others r mod]
+  (let [apos (aget agents idx "pos")]
     (-> (loop [others others force (v/vec3)]
           (if-let [o (first others)]
-            (let [opos (get-vec3 pos o)
+            (let [opos (aget agents o "pos")
                   dist (g/dist apos opos)]
               (recur (next others)
                      (if (zero? dist)
@@ -131,13 +116,13 @@
         (m/* mod))))
 
 
-(defn swarm-align [{:keys [pos vel acc]} idx others radius mod]
-  (let [apos (get-vec3 pos idx)
-        avel (get-vec3 vel idx)]
+(defn swarm-align [agents idx others radius mod]
+  (let [apos (aget agents idx "pos")
+        avel (aget agents idx "vel")]
     (-> (loop [others others force (v/vec3)]
           (if-let [o (first others)]
-            (let [opos (get-vec3 pos o)
-                  ovel (get-vec3 vel o)
+            (let [opos (aget agents o "pos")
+                  ovel (aget agents o "vel")
                   dist (g/dist apos opos)]
               (recur (next others)
                      (if (zero? dist)
@@ -150,14 +135,14 @@
 
 
 
-(defn swarm-cohere [{:keys [pos vel acc]} idx others radius mod]
-  (let [apos (get-vec3 pos idx)
+(defn swarm-cohere [agents idx others radius mod]
+  (let [apos (aget agents idx "pos")
         force (-> (loop [others others force (v/vec3)]
                     (if-let [o (first others)]
                       (recur (next others)
                              (if (= idx o)
                                force
-                               (m/+ force (get-vec3 pos o))))
+                               (m/+ force (aget agents o "pos"))))
                       force))
                   (m/div (dec (count others))))
         dist (g/dist apos force)]
@@ -174,21 +159,18 @@
 
 
 (defn swarm [tree]
-  (fn [{agent-count :count
-        {:keys [pos acc] :as data} :data}
+  (fn [agents
        {:keys [radius cohesion
                separation alignment
                view-angle max-vel size]}]
-    (loop [idx 0]
-      (when (< idx agent-count)
-        (let [apos (get-vec3 pos idx)
-              others (t/select-with-sphere tree apos radius)]
-          (when (<= 2 (count others))
-            (->> (reduce
-                  m/+
-                  (v/vec3)
-                  [(swarm-separate data idx others radius separation)
-                   (swarm-align data idx others radius alignment)
-                   (swarm-cohere data idx others radius cohesion)])
-                 (set-vec3 acc idx))))
-        (recur (inc idx))))))
+    (let [size (count agents)]
+      (loop [idx 0]
+        (when (< idx size)
+          (let [others (t/select-with-sphere tree (aget agents idx "pos") radius)]
+            (when (<= 2 (count others))
+              (m/+! (aget agents idx "acc")
+                    (m/+ (swarm-separate agents idx others radius separation)
+                         (swarm-align agents idx others radius alignment)
+                         (swarm-cohere agents idx others radius cohesion))) #_(aset agents
+                    idx "acc")))
+          (recur (inc idx)))))))

@@ -21,7 +21,7 @@
              :separation 0.4
              :alignment 0.4
              :max-vel 6
-             :trail-size 180})
+             :trail-size 120})
 
 
 
@@ -30,10 +30,8 @@
 
 (defn setup []
   (let [tree (apply t/octree 0 0 0 (:size config))
-        agents (-> (->> [:agent-count :size]
-                        (mapv config)
-                        (apply a/generate-agents))
-                   (a/agents->array [:pos :acc :vel]))]
+        agents (a/generate-agents config)
+        trail (a/->Trail (array) (:trail-size config) 0)]
     (q/frame-rate 60)
     (q/stroke-weight 0.5)
     (q/stroke 180)
@@ -41,10 +39,10 @@
     (q/background 0)
     (swap! state merge {:tick 0
                         :tree-updater (a/update-tree tree)
+                        ;;:trail trail
                         :swarm-fn (a/swarm tree)
                         :trail (r/ring-buffer (:trail-size config))
-                        :agents {:data agents
-                                 :count (:agent-count config)}})))
+                        :agents agents})))
 
 
 
@@ -56,22 +54,28 @@
     (q/box x y z)))
 
 
-(defn draw-agents [{{:keys [pos]} :data
-                    count :count}]
-  (q/no-stroke)
-  ;;(q/stroke-weight 3)
-  ;;(q/begin-shape :points)
-  (loop [idx 0]
-    (when (< idx count)
-      (let [apos (a/get-vec3 pos idx)]
-        (apply q/fill (m/normalize apos 255))
-        ;;(apply q/stroke (m/normalize apos 255))
-        ;;(apply q/vertex apos)
-        (q/with-translation apos
-          (q/box 10)))
-      (recur (inc idx))))
-  ;;(q/end-shape)
-  )
+(defn draw-agents [agents]
+  ;;(q/no-stroke)
+  (q/stroke-weight 3)
+  (q/begin-shape :points)
+
+  (let [size (count agents)]
+    (loop [idx 0]
+      (when (< idx size)
+        (let [a (aget agents idx)
+              pos (.-pos a)
+              color (m/normalize pos 255)]
+          ;;(apply q/fill color)
+          (q/stroke (get color 0)
+                    (get color 1)
+                    (get color 2))
+          (q/vertex (get pos 0)
+                    (get pos 1)
+                    (get pos 2))
+          #_(q/with-translation pos
+              (q/box 10)))
+        (recur (inc idx)))))
+  (q/end-shape))
 
 
 (defn draw-trail [trail]
@@ -86,14 +90,8 @@
 
 
 (defn update-state! [state]
-  (let [{:keys [tick tree-updater agents swarm-fn]} @state]
+  (let [{:keys [tree-updater agents swarm-fn]} @state]
     (swap! state update :trail into (a/get-positions agents))
-    #_(reset! state
-              (cond-> @state
-                (zero? (mod tick 1)) (update :trail into (a/get-positions agents))
-                :default (update :tick inc)))
-    
-    
     (tree-updater agents)
     (swarm-fn agents config)
     (a/move agents config)
@@ -107,8 +105,7 @@
     (q/background 0)
     ;;(draw-box (:size config))
     ;;(draw-agents (:agents @state))
-    (draw-trail (:trail @state))
-    ))
+    (draw-trail (:trail @state))))
 
 
 

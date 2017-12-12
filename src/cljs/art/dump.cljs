@@ -106,3 +106,43 @@
       [_]
       (t/set-children _ nil)
       _))
+
+
+
+#_(
+   (defn agents->array [agents ks]
+     (reduce
+      (fn [m k]
+        (assoc m k (ta/float32 (mapcat k agents))))
+      {}
+      ks))
+
+
+
+   (defn get-vec3 [data idx]
+     (v/vec3 (aget data (* 3 idx))
+             (aget data (+ 1 (* 3 idx)))
+             (aget data (+ 2 (* 3 idx)))))
+
+
+   (defn set-vec3 [data idx [x y z]]
+     (aset data (* 3 idx) x)
+     (aset data (+ 1 (* 3 idx)) y)
+     (aset data (+ 2 (* 3 idx)) z))
+
+   )
+
+
+
+#_(defn move [{count :count {:keys [pos vel acc]} :data}
+              {:keys [max-vel]}]
+    (loop [idx 0]
+      (when (< idx count)
+        (let [apos (get-vec3 pos idx)
+              avel (get-vec3 vel idx)
+              aacc (get-vec3 acc idx)]
+          (let [force (m/limit (m/+ avel aacc) max-vel)]
+            (set-vec3 pos idx (m/+ apos force))
+            (set-vec3 vel idx force)
+            (set-vec3 acc idx [0 0 0])))
+        (recur (inc idx)))))
