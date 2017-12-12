@@ -12,17 +12,17 @@
 
 (def state (atom {:active false}))
 
-(def config {:agent-count 150
+(def config {:agent-count 120
              :color [200 200 0]
              :window-size [900 600]
              :size [800 800 500]
              :pos [0 200 -600]
-             :radius 80
+             :radius 70
              :cohesion 0.39
              :separation 0.4
              :alignment 0.6
-             :max-vel 8
-             :trail-size 250})
+             :max-vel 6.5
+             :trail-size 190})
 
 
 (defn setup []

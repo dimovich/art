@@ -70,9 +70,9 @@
   []
   (task-options! cljs  {:optimizations :advanced})
   (comp
-   ;;(cljs)
-   (aot :namespace #{'art.core})
-   (uber)
-   (jar :file "art.jar" :main 'art.core)
-   (sift :include #{#"art.jar" #"js" #"index.html"})
+   (cljs)
+   #_((aot :namespace #{'art.core})
+      (uber)
+      (jar :file "art.jar" :main 'art.core)
+      (sift :include #{#"art.jar" #"js" #"index.html"}))
    (target :dir #{"release"})))
