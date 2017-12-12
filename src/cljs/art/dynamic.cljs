@@ -11,17 +11,17 @@
             [taoensso.timbre :refer [info]]))
 
 
-(def config {:agent-count 70
+(def config {:agent-count 100
              :color [200 200 0]
              :window-size [768 600]
              :size [800 600 500]
              :pos [0 0 -600]
-             :radius 80
+             :radius 60
              :cohesion 0.38
              :separation 0.4
-             :alignment 0.4
+             :alignment 0.5
              :max-vel 6
-             :trail-size 120})
+             :trail-size 180})
 
 
 
@@ -30,17 +30,14 @@
 
 (defn setup []
   (let [tree (apply t/octree 0 0 0 (:size config))
-        agents (a/generate-agents config)
-        trail (a/->Trail (array) (:trail-size config) 0)]
+        agents (a/generate-agents config)]
     (q/frame-rate 60)
     (q/stroke-weight 0.5)
     (q/stroke 180)
     (q/no-fill)
     (q/background 0)
-    (swap! state merge {:tick 0
-                        :tree-updater (a/update-tree tree)
-                        ;;:trail trail
-                        :swarm-fn (a/swarm tree)
+    (swap! state merge {:tree-updater (a/update-tree tree)
+                        :swarm-fn (a/swarm tree config)
                         :trail (r/ring-buffer (:trail-size config))
                         :agents agents})))
 
@@ -55,10 +52,8 @@
 
 
 (defn draw-agents [agents]
-  ;;(q/no-stroke)
   (q/stroke-weight 3)
   (q/begin-shape :points)
-
   (let [size (count agents)]
     (loop [idx 0]
       (when (< idx size)
@@ -71,9 +66,7 @@
                     (get color 2))
           (q/vertex (get pos 0)
                     (get pos 1)
-                    (get pos 2))
-          #_(q/with-translation pos
-              (q/box 10)))
+                    (get pos 2)))
         (recur (inc idx)))))
   (q/end-shape))
 
@@ -91,11 +84,11 @@
 
 (defn update-state! [state]
   (let [{:keys [tree-updater agents swarm-fn]} @state]
-    (swap! state update :trail into (a/get-positions agents))
     (tree-updater agents)
     (swarm-fn agents config)
     (a/move agents config)
-    (a/bounce agents config)))
+    (a/bounce agents config)
+    (swap! state update :trail into (a/get-positions agents))))
 
 
 (defn draw []
@@ -105,7 +98,8 @@
     (q/background 0)
     ;;(draw-box (:size config))
     ;;(draw-agents (:agents @state))
-    (draw-trail (:trail @state))))
+    (draw-trail (:trail @state))
+    ))
 
 
 
