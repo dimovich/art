@@ -53,16 +53,16 @@
                  )
   (comp
    (cider)
-   (serve :dir "target"
-          :reload true
-          :httpkit true
-          :port 5000)
+   #_(serve :dir "target"
+            :reload true
+            :httpkit true
+            :port 5000)
    (watch)
    (reload)
-   (cljs-repl)
-   (cljs)
-   #_(repl :server true
-           :port 3311)
+   ;;   (cljs-repl)
+   ;;   (cljs)
+   (repl :server true
+         :port 3311)
    (target :dir #{"target"})))
 
 
@@ -70,9 +70,9 @@
   []
   (task-options! cljs  {:optimizations :advanced})
   (comp
-   (cljs)
-   ;;(aot :namespace #{'art.core})
-   ;;(uber)
-   ;;(jar :file "art.jar" :main 'art.core)
-   ;;(sift :include #{#"art.jar" #"js" #"index.html"})
+   ;;(cljs)
+   (aot :namespace #{'art.core})
+   (uber)
+   (jar :file "art.jar" :main 'art.core)
+   (sift :include #{#"art.jar" #"js" #"index.html"})
    (target :dir #{"release"})))

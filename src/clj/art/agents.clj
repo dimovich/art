@@ -2,40 +2,41 @@
   (:require [thi.ng.geom.core :as g]
             [thi.ng.math.core :as m]
             [thi.ng.geom.vector :as v]
+            [thi.ng.geom.physics.core :as p]
             [thi.ng.geom.spatialtree :as t]
             [taoensso.timbre :refer [info]]))
 
 
-(defn generate-agents [n [x y z]]
-  (into
-   []
-   (take n (repeatedly
-            (fn []
-              {:pos (v/vec3 (rand-int x)
-                            (rand-int y)
-                            (rand-int z))
-
-               :acc (v/vec3)
-               
-               :vel (->> #(rand-nth (range -1.5 2 0.5))
-                         repeatedly
-                         (take 3)
-                         (apply v/vec3))})))))
+(defrecord Agent [pos vel acc])
 
 
+(defn generate-agents [{:keys [size max-vel agent-count]}]
+  (loop [idx 0 xs []]
+    (if (< idx agent-count)
+      (->> {:pos (apply v/vec3 (map rand-int size))
+            :vel (v/randvec3 max-vel)
+            :acc (v/vec3 0)}
+           map->Agent
+           (conj xs)
+           (recur (inc idx)))
+      xs)))
 
-(defn move [agents & [{:keys [max-vel]}]]
-  (mapv
-   (fn [agent]
-     (let [vel (:vel agent)
-           acc (:acc agent)
-           vel (m/limit (m/+ vel acc)
-                        max-vel)]
-       (-> agent
-           (update :pos m/+ vel)
-           (assoc :vel vel
-                  :acc (v/vec3)))))
-   agents))
+
+(defn move [agents {:keys [max-vel]}]
+  (let [size (count agents)]
+    (loop [idx 0]
+      (when (< idx size)
+        (let [a (get agents idx)
+              acc (.-acc a)
+              pos (.-pos a)
+              vel (.-vel a)
+              f (m/limit (m/+ vel acc) max-vel)]
+          ;;(info pos vel acc)
+          (m/+! pos f)
+          (m/*! vel 0)
+          (m/+! vel f)
+          (m/*! acc 0))
+        (recur (inc idx))))))
 
 
 
@@ -45,98 +46,133 @@
 
 
 (defn bounce [agents {[w h d] :size}]
-  (mapv
-   (fn [{[x y z :as pos] :pos :as agent}]
-     (update agent :vel
-             #(cond-> %
-                (or (> x w)
-                    (< x 0)) (m/* reverse-x)
-                (or (> y h)
-                    (< y 0)) (m/* reverse-y)
-                (or (> z d)
-                    (< z 0)) (m/* reverse-z))))
-   agents))
+  (let [size (count agents)]
+    (loop [idx 0]
+      (when (< idx size)
+        (let [a (get agents idx)
+              [x y z] (.-pos a)
+              vel     (.-vel a)]
+          (cond-> vel
+            (or
+             (< x 0)
+             (> x w)) (m/*! reverse-x)
 
+            (or
+             (< y 0)
+             (> y h)) (m/*! reverse-y)
 
-(defn update-tree [tree agents]
-  (reduce
-   #(g/add-point % (:pos %2) %2)
-   (g/clear! tree)
-   agents))
-
-
-(defn swarm-separate [a others radius]
-  (let [force (reduce
-               (fn [v o]
-                 (m/+ v
-                      (m/* (m/- (:pos a)
-                                (:pos o))
-                           (/ radius (:dist o)))))
-               (v/vec3)
-               others)]
-    (when (< 0 (m/mag-squared force))
-      (m/normalize force))))
-
-
-(defn swarm-align [a others radius]
-  (let [force (reduce
-               (fn [v o]
-                 (m/+ v
-                      (m/* (:vel o)
-                           (/ radius (:dist o)))))
-               (v/vec3)
-               others)]
-    (when (< 0 (m/mag-squared force))
-      (m/normalize force))))
-
-
-(defn swarm-cohere [a others radius]
-  (let [cohesion (reduce
-                  (fn [v o]
-                    (m/+ v (:pos o)))
-                  (v/vec3)
-                  others)
-        scaled (m/div cohesion (count others))
-        dist (g/dist (:pos a) scaled)
-        force (m/* (m/- scaled (:pos a))
-                   (/ radius dist))]
-    (when (< 0 (m/mag-squared force))
-      (m/normalize force))))
+            (or
+             (< z 0)
+             (> z d)) (m/*! reverse-z))
+        
+          (recur (inc idx)))))))
 
 
 
-(defn distance [a others]
-  (for [o others]
-    (assoc o :dist (g/dist (:pos a) (:pos o)))))
+
+(defn get-positions []
+  (fn [agents]
+    (map #(apply v/vec3 (.-pos %)) agents)))
 
 
-(defn swarm [agents {:keys [radius cohesion
-                            separation alignment
-                            view-angle max-vel size]}]
+(defn update-tree [tree]
+  (fn [agents]
+    (t/set-children tree nil)
+    (let [size (count agents)]
+      (loop [idx 0]
+        (when (< idx size)
+          (g/add-point tree (.-pos (get agents idx)) idx)
+          (recur (inc idx)))))))
 
-  (let [tree (apply t/octree 0 0 0 size)]
-    (doseq [a agents]
-      (g/add-point tree (:pos a) a))
+
+(defn swarm-separate [agents dists a others r mod]
+  (let [apos (.-pos a)
+        size (count others)]
+    (-> (loop [idx 0 force (v/vec3)]
+          (if (< idx size)
+            (let [o (get others idx)
+                  dist (get dists idx)
+                  opos (.-pos (get agents o))]
+              (recur (inc idx)
+                     (if (zero? dist)
+                       force
+                       (m/+ force
+                            (m/* (m/- apos opos)
+                                 (/ r dist))))))
+            force))
+        m/normalize
+        (m/* mod))))
+
+
+(defn swarm-align [agents dists a others radius mod]
+  (let [apos (.-pos a)
+        avel (.-vel a)
+        size (count others)]
+    (-> (loop [idx 0 force (v/vec3)]
+          (if (< idx size)
+            (let [o (get others idx)
+                  dist (get dists idx)
+                  opos (.-pos (get agents o))
+                  ovel (.-vel (get agents o))]
+              (recur (inc idx)
+                     (if (zero? dist)
+                       force
+                       (m/+ force (m/* ovel (/ radius dist))))))
+            force))
+        (m/div (dec size))
+        m/normalize
+        (m/* mod))))
+
+
+
+(defn swarm-cohere [agents dists a others radius mod]
+  (let [apos (.-pos a)
+        force (-> (loop [others others force (v/vec3)]
+                    (if-let [idx (first others)]
+                      (let [o (get agents idx)]
+                        (recur (next others)
+                               (if (= a o)
+                                 force
+                                 (m/+ force (.-pos o)))))
+                      force))
+                  (m/div (dec (count others))))
+        dist (g/dist apos force)]
     
-    (mapv
-     (fn [a]
-       (let [others (->> (t/select-with-sphere tree (:pos a) radius)
-                         (remove #{a})
-                         (distance a)
-                         (remove #(zero? (:dist %))))]
-         (if (empty? others)
-           a
-           (let [force (reduce
-                        m/+
-                        (v/vec3)
-                        (remove
-                         nil?
-                         [(some-> (swarm-separate a others radius)
-                                  (m/* separation)) 
-                          (some-> (swarm-align a others radius)
-                                  (m/* alignment))
-                          (some-> (swarm-cohere a others radius)
-                                  (m/* cohesion))]))
-                 acc (m/+ (:acc a) force)]
-             (assoc a :acc acc)))))
-     agents)))
+    (if (zero? dist)
+      (v/vec3)
+      (-> (m/* (m/- force apos)
+               (/ radius dist))
+          m/normalize
+          (m/* mod))) ))
+
+
+(defn distance [agents a others]
+  (let [size (count others)
+        pos (.-pos a)]
+    (loop [idx 0 dists []]
+      (if (< idx size)
+        (let [o (get others idx)]
+          (recur (inc idx)
+                 (conj dists (g/dist pos (.-pos (get agents o)))))) 
+        dists))))
+
+
+(defn swarm [tree {:keys [agent-count]}]
+  (fn [agents
+       {:keys [radius cohesion
+               separation alignment
+               view-angle max-vel size]}]
+    (let [size (count agents)]
+      (loop [idx 0]
+        (when (< idx size)
+          (let [a (get agents idx)
+                acc (.-acc a)
+                pos (.-pos a)
+                others (t/select-with-sphere tree pos radius)
+                dists (distance agents a others)]
+            (if (<= 2 (count others))
+              (m/+! acc (m/+ (swarm-separate agents dists a others radius separation)
+                             (swarm-align agents dists a others radius alignment)
+                             (swarm-cohere agents dists a others radius cohesion)))
+              (m/+! acc (v/randvec3))))
+          (recur (inc idx)))))))
