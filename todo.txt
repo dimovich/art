@@ -1,0 +1,13 @@
+* re-use octree (set-point, get-children...)
+
+* mutable ring buffer
+
+* dist agent field
+
+* WebGL
+
+* emscripten
+
+* web controls
+
+* fix bug (bounce sign?)

@@ -11,17 +11,17 @@
 
 (def state (atom {:active false}))
 
-(def config {:agent-count 200
+(def config {:agent-count 150
              :color [200 200 0]
              :window-size [900 600]
              :size [800 800 500]
              :pos [0 200 -600]
-             :radius 60
+             :radius 80
              :cohesion 0.39
-             :separation 0.4
+             :separation 0.41
              :alignment 0.6
              :max-vel 6
-             :trail-size 300})
+             :trail-size 230})
 
 
 (defn setup []
@@ -65,7 +65,6 @@
 
 
 (defn draw-trail [trail]
-  
   (q/begin-shape :points)
   (loop [trail trail]
     (when-let [p (first trail)]
@@ -82,17 +81,15 @@
     (swarm-fn agents config)
     (a/move agents config)
     (a/bounce agents config)
-    ;;(update state :trail into (positions-fn agents))
-    state
-    ))
+    (update state :trail into (positions-fn agents))))
 
 
 (defn draw [state]
   ;;q/with-translation (:pos config)
   (q/background 0)
   ;;(draw-box (:size config))
-  (draw-agents (:agents state))
-  ;;(draw-trail (:trail state))
+  ;;(draw-agents (:agents state))
+  (draw-trail (:trail state))
   )
 
 

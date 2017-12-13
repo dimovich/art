@@ -66,13 +66,21 @@
    (target :dir #{"target"})))
 
 
-(deftask prod
+(deftask prod-js
   []
   (task-options! cljs  {:optimizations :advanced})
   (comp
    (cljs)
-   #_((aot :namespace #{'art.core})
-      (uber)
-      (jar :file "art.jar" :main 'art.core)
-      (sift :include #{#"art.jar" #"js" #"index.html"}))
-   (target :dir #{"release"})))
+   (sift :include #{#"js/.*js" #"index.html"})
+   (target :dir #{"release-js"})))
+
+
+
+(deftask prod-jar
+  []
+  (comp
+   (aot :namespace #{'art.core})
+   (uber)
+   (jar :file "art.jar" :main 'art.core)
+   (sift :include #{#"art.jar"})
+   (target :dir #{"release-jar"})))
