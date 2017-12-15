@@ -11,3 +11,7 @@
 * web controls
 
 * fix bug (bounce sign?)
+
+
+three.js
+https://gist.github.com/seabre/9030268
