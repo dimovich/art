@@ -8,7 +8,8 @@
             [thi.ng.geom.spatialtree :as t]
             [thi.ng.typedarrays.core :as ta]
             [art.agents :as a]
-            [taoensso.timbre :refer [info]]))
+            [taoensso.timbre :refer [info]]
+            [art.gl :as agl]))
 
 (def state (atom {:active false}))
 
@@ -100,22 +101,23 @@
 
 
 (defn ^:export create []
-  (q/with-sketch (q/get-sketch-by-id "art")
-    (if (:active @state)
-      (q/exit)
-      (swap! state update :active not)))
+  (agl/demo)
+  #_((q/with-sketch (q/get-sketch-by-id "art")
+       (if (:active @state)
+         (q/exit)
+         (swap! state update :active not)))
   
-  (q/defsketch art
-    :renderer :p3d
-    :middleware [qm/fun-mode qm/navigation-3d]
-    :navigation-3d {:position [340.06592727916393 105.44126878160894 991.7662366785296]
-                    :straight [0.08818531557111595 0.35380829942837455 -0.8719076123592358]
-                    :up [-0.008166460209455039 0.9551572896947682 0.14789964782999468]}
+     (q/defsketch art
+       :renderer :p3d
+       :middleware [qm/fun-mode qm/navigation-3d]
+       :navigation-3d {:position [340.06592727916393 105.44126878160894 991.7662366785296]
+                       :straight [0.08818531557111595 0.35380829942837455 -0.8719076123592358]
+                       :up [-0.008166460209455039 0.9551572896947682 0.14789964782999468]}
     
-    :setup setup
-    :draw draw
-    :update update-state
-    :size (:window-size config)))
+       :setup setup
+       :draw draw
+       :update update-state
+       :size (:window-size config))))
 
 
 (defn ^:export toggle []

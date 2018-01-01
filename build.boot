@@ -19,9 +19,23 @@
                  [quil "2.6.0"]
                  [com.taoensso/timbre "4.10.0"]
                  [thi.ng/geom "0.0.1178-SNAPSHOT"]
-                 [thi.ng/math "0.2.1"]
-                 [org.jogamp.gluegen/gluegen-rt "2.3.2" :classifier "natives-linux-amd64"]
-                 [org.jogamp.jogl/jogl-all "2.3.2" :classifier "natives-linux-amd64"]])
+                 #_(                 
+                    [thi.ng/math "0.2.1"]
+                    [thi.ng/color "1.2.0"]
+                    [thi.ng/dstruct "0.2.1"]
+                    [thi.ng/ndarray "0.3.2"]
+                    [thi.ng/shadergraph "0.3.0-SNAPSHOT"]
+                    [thi.ng/strf "0.2.2"]
+                    [thi.ng/typedarrays "0.1.6"]
+                    [thi.ng/xerror "0.1.0"]
+                    )
+                 ;;[org.jogamp.gluegen/gluegen-rt "2.3.2"]
+                 ;;[org.jogamp.jogl/jogl-all "2.3.2"]
+
+                 
+                 ;; [org.jogamp.gluegen/gluegen-rt "2.3.2" :classifier "natives-linux-amd64"]
+                 ;; [org.jogamp.jogl/jogl-all "2.3.2" :classifier "natives-linux-amd64"]
+                 ])
 
 
 
@@ -49,20 +63,19 @@
   (task-options! cljs      {:optimizations :none
                             :source-map    true}
                  cljs-repl {:nrepl-opts {:port 3311}}
-                 ;;reload {:on-jsload 'art.dynamic/run}
-                 )
+                 reload {:on-jsload 'art.core/main})
   (comp
    (cider)
-   #_(serve :dir "target"
-            :reload true
-            :httpkit true
-            :port 5000)
+   (serve :dir "target"
+          :reload true
+          :httpkit true
+          :port 5000)
    (watch)
    (reload)
-   ;;   (cljs-repl)
-   ;;   (cljs)
-   (repl :server true
-         :port 3311)
+   (cljs-repl)
+   (cljs)
+   #_(repl :server true
+           :port 3311)
    (target :dir #{"target"})))
 
 
