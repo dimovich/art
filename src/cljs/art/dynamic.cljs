@@ -1,7 +1,5 @@
 (ns art.dynamic
-  (:require [quil.core :as q :include-macros true]
-            [quil.middleware :as qm]
-            [amalloy.ring-buffer :as r]
+  (:require [amalloy.ring-buffer :as r]
             [thi.ng.geom.core :as g]
             [thi.ng.geom.vector :as v]
             [thi.ng.math.core :as m]
@@ -9,48 +7,64 @@
             [thi.ng.typedarrays.core :as ta]
             [art.agents :as a]
             [taoensso.timbre :refer [info]]
-            [art.gl :as agl]))
+            [art.gl :as agl]
+            [art.config :refer [config]]))
 
-(def state (atom {:active false}))
-
-(def config {:agent-count 120
-             :color [200 200 0]
-             :window-size [900 600]
-             :size [800 800 500]
-             :pos [0 200 -600]
-             :radius 70
-             :cohesion 0.39
-             :separation 0.4
-             :alignment 0.6
-             :max-vel 6.5
-             :trail-size 190})
+(def state (atom {:active true}))
 
 
-(defn setup []
-  (let [tree (apply t/octree 0 0 0 (:size config))
-        agents (a/generate-agents config)]
-    (q/frame-rate 60)
-    (q/stroke-weight 3)
-    (q/stroke 180)
-    (q/no-fill)
-    (q/background 0)
-    {:tick 0
-     :angle 0
-     :tree-fn (a/update-tree tree)
+(defn setup [config]
+  (let [tree   (apply t/octree 0 0 0 (:size config))
+        agents (a/generate-agents config)
+        trail  (r/ring-buffer (:trail-size config))]
+    {:tree-fn (a/update-tree tree)
      :swarm-fn (a/swarm tree config)
-     :positions-fn (a/get-positions)
-     :trail (r/ring-buffer (:trail-size config))
+     :trail (into trail (a/get-positions agents))
      :agents agents}))
 
 
+(defn update-state [state]
+  (let [{:keys [agents tree-fn swarm-fn]} state]
+;;    (tree-fn agents)
+;;    (swarm-fn agents config)
+    (a/move agents config)
+    (a/bounce agents config)
+    (update state :trail into (a/get-positions agents))))
 
-(defn draw-box [[x y z]]
-  (q/stroke-weight 0.1)
-  (q/with-translation [(/ x 2)  (/ y 2)  (/ z 2)]
-    (q/box x y z)))
 
 
-(defn draw-agents [agents]
+(defn ^:export create []
+  (swap! state merge (setup config))
+  (agl/init-app-3d state (.getElementById js/document "art"))
+  (agl/update-app-3d state update-state))
+
+
+
+(defn ^:export toggle []
+  (swap! state update :active not))
+
+
+
+
+
+
+
+
+
+
+#_(defn draw-trail [trail]
+    (q/begin-shape :points)
+    (loop [trail trail]
+      (when-let [p (first trail)]
+        (apply q/stroke (m/normalize p 255))
+        (apply q/vertex p)
+        (recur (next trail))))
+    (q/end-shape))
+
+
+
+
+#_(defn draw-agents [agents]
   (q/stroke-weight 3)
   (q/begin-shape :points)
   (let [size (count agents)]
@@ -67,63 +81,3 @@
                     (get pos 2)))
         (recur (inc idx)))))
   (q/end-shape))
-
-
-(defn draw-trail [trail]
-  
-  (q/begin-shape :points)
-  (loop [trail trail]
-    (when-let [p (first trail)]
-      (apply q/stroke (m/normalize p 255))
-      (apply q/vertex p)
-      (recur (next trail))))
-  (q/end-shape))
-
-
-(defn update-state [state]
-;;  (info (:navigation-3d state))
-  (let [{:keys [agents tree-fn swarm-fn positions-fn tick]} state]
-    (tree-fn agents)
-    (swarm-fn agents config)
-    (a/move agents config)
-    (a/bounce agents config)
-    (update state :trail into (positions-fn agents))))
-
-
-(defn draw [state]
-  ;;q/with-translation (:pos config)
-  (q/background 0)
-  ;;(draw-box (:size config))
-  ;;(draw-agents (:agents state))
-  (draw-trail (:trail state)))
-
-
-
-
-(defn ^:export create []
-  (agl/demo)
-  #_((q/with-sketch (q/get-sketch-by-id "art")
-       (if (:active @state)
-         (q/exit)
-         (swap! state update :active not)))
-  
-     (q/defsketch art
-       :renderer :p3d
-       :middleware [qm/fun-mode qm/navigation-3d]
-       :navigation-3d {:position [340.06592727916393 105.44126878160894 991.7662366785296]
-                       :straight [0.08818531557111595 0.35380829942837455 -0.8719076123592358]
-                       :up [-0.008166460209455039 0.9551572896947682 0.14789964782999468]}
-    
-       :setup setup
-       :draw draw
-       :update update-state
-       :size (:window-size config))))
-
-
-(defn ^:export toggle []
-  (q/with-sketch (q/get-sketch-by-id "art")
-    (if (:active @state)
-      (q/no-loop)
-      (q/start-loop)))
-  
-  (swap! state update :active not))

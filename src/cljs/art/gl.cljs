@@ -2,6 +2,9 @@
   (:require-macros
    [thi.ng.math.macros :as mm])
   (:require
+   [taoensso.timbre :refer [info]]
+   [art.agents :as a]
+   [art.config :refer [config]]
    [thi.ng.math.core :as m :refer [PI HALF_PI TWO_PI]]
    [thi.ng.color.core :as col]
    [thi.ng.typedarrays.core :as arrays]
@@ -16,72 +19,196 @@
    [thi.ng.geom.core :as g]
    [thi.ng.geom.vector :as v :refer [vec2 vec3]]
    [thi.ng.geom.matrix :as mat :refer [M44]]
-   [thi.ng.geom.aabb :as a]
    [thi.ng.geom.attribs :as attr]
    [thi.ng.glsl.core :as glsl :include-macros true]
    [thi.ng.geom.plane :as pl]
-   [thi.ng.geom.gl.shaders.phong :as phong]))
+   [thi.ng.geom.gl.shaders.phong :as phong]
+   [thi.ng.geom.mesh.io :as mio]
+   [thi.ng.geom.quaternion :as q]
+   [thi.ng.geom.gl.arcball :as arc]))
 
-(enable-console-print!)
 
-(defn raycast
-  [p eye ground back]
-  (let [dir (m/- p eye)
-        i1  (:p (g/intersect-ray ground eye dir))
-        i2  (:p (g/intersect-ray back eye dir))]
-    (if (< (g/dist-squared eye i1) (g/dist-squared eye i2)) i1 i2)))
 
-(defn ^:export demo
-  []
-  (let [gl         (gl/gl-context "art")
-        view-rect  (gl/get-viewport-rect gl)
+(defn init-arcball
+  [state el vrect]
+  (swap! state assoc :cam
+         (-> (arc/arcball {:init (m/normalize (q/quat 0.0 0.707 0.707 0))
+                           :center (m/div (v/vec3 (:size config)) 2)})
+             (arc/resize (g/width vrect) (g/height vrect))))
+  (doto el
+    (.addEventListener
+     "mousedown"
+     (fn [e]
+       (doto state
+         (swap! assoc :mouse-down true)
+         (swap! update :cam arc/down (.-clientX e) (.-clientY e)))))
+    (.addEventListener
+     "mouseup"
+     (fn [e] (swap! state assoc :mouse-down false)))
+    (.addEventListener
+     "mousemove"
+     (fn [e]
+       (when (:mouse-down @state)
+         (swap! state update :cam arc/drag (.-clientX e) (.-clientY e)))))))
+
+
+
+
+(def shader-spec
+  {:vs "void main() {
+    vCol = vec4(0.2, 0.2, 0.2, 0.8);
+    gl_Position = proj * view * model * vec4(position, 1.0);
+    gl_PointSize = 8.0 - gl_Position.w * 1.1;
+    }"
+   :fs "void main() {
+    gl_FragColor = vCol;
+    }"
+   :uniforms {:model      [:mat4 M44]
+              :view       :mat4
+              :proj       :mat4}
+   :attribs  {:position   :vec3}
+   :varying  {:vCol       :vec4}
+   :state    {:depth-test false
+;;              :blend      true
+;;              :blend-fn   [glc/src-alpha glc/one]
+              }})
+
+
+
+
+
+(defn attrib-buffer-view
+  [data]
+  (arrays/float32 (apply concat data)))
+
+
+
+(defn update-attrib-buffer
+  [gl scene attrib data]
+  (.bindBuffer gl glc/array-buffer
+               (get-in scene [:particles :attribs attrib :buffer]))
+  (.bufferData gl glc/array-buffer
+               (attrib-buffer-view data)
+               glc/dynamic-draw))
+
+
+
+(defn init-app-3d
+  [state dom]
+  (let [positions    (a/get-positions (:agents @state))
+        gl           (gl/gl-context dom)
+        view         (gl/get-viewport-rect gl)
+
         shader     (sh/make-shader-from-spec gl phong/shader-spec)
-        cam        (cam/perspective-camera
-                    {:eye (vec3 1 2 6)
-                     :target (vec3 0 0.6 0)
-                     :aspect view-rect
-                     :far 200})
-        size       50
-        ground-y   -0.55
-        uniforms   {:model     M44
-                    :shininess 1000
-                    :lightPos  (vec3 -1 2 0)}
-        box        (-> (a/aabb 1)
-                       (g/center)
-                       (g/as-mesh {:mesh (glm/indexed-gl-mesh 12 #{:fnorm})})
-                       (gl/as-gl-buffer-spec {})
-                       (gl/make-buffers-in-spec gl glc/static-draw)
-                       (assoc :shader shader :uniforms (assoc uniforms :diffuseCol [1 0 1])))
+        size       20
+        ground-y   -1.55
         ground     (pl/plane-with-point (vec3 0 ground-y 0) v/V3Y)
         back       (pl/plane-with-point (vec3 0 0 (* -0.5 size)) v/V3Z)
         planes     (-> (g/as-mesh back {:mesh (glm/indexed-gl-mesh 4 #{:fnorm}) :size size})
                        (g/translate (vec3 0 (+ (* 0.5 size) ground-y) 0))
                        (g/into (g/as-mesh ground {:size size}))
                        (gl/as-gl-buffer-spec {})
-                       (gl/make-buffers-in-spec gl glc/static-draw)
-                       (assoc :shader shader :uniforms uniforms))
-        state      (volatile! {:mpos (g/centroid view-rect) :update-ray true})
-        update-pos #(vswap! state assoc
-                            :mpos (vec2 (.-clientX %) (.-clientY %))
-                            :update-ray true)]
-    (.addEventListener js/window "mousemove" update-pos)
-    (.addEventListener js/window "touchmove" #(do (.preventDefault %) (update-pos (aget (.-touches %) 0))))
-    (anim/animate
-     (fn [t frame]
-       (let [;;cam  (cam/set-view cam {:eye #(g/rotate-y % (Math/sin t))})
-             isec (if (:update-ray @state)
-                    (let [p (-> (vec3 (:mpos @state) 0)
-                                (mat/unproject-point (m/invert (m/* (:proj cam) (:view cam))) view-rect)
-                                (raycast (:eye cam) ground back))]
-                      (vswap! state assoc :isec p :update-ray false) p)
-                    (:isec @state))]
+                       (assoc :uniforms {:proj          (mat/perspective 70 view 0.1 50)
+                                         :view          (mat/look-at (v/vec3 0 0 1) (v/vec3) v/V3Y)
+                                         :lightPos      (vec3 0.1 0 1)
+                                         :ambientCol    0x000011
+                                         :diffuseCol    0x0033ff
+                                         :specularCol   0xffffff
+                                         :shininess     100
+                                         :wrap          0
+                                         :useBlinnPhong true}
+                              :shader shader)
+                       (gl/make-buffers-in-spec gl glc/static-draw))
+        
+        
+        particles    (-> {:attribs  {:position {:data (attrib-buffer-view positions)
+                                                :size   3
+                                                :stride 12}}
+                          :num-vertices (count positions)
+                          :mode     glc/points}
+                         (gl/make-buffers-in-spec gl glc/dynamic-draw)
+                         (assoc :shader (sh/make-shader-from-spec gl shader-spec))
+                         (update :uniforms merge
+                                 #_{:proj          (mat/perspective 90 view 0.1 100)
+                                    :view          (mat/look-at (v/vec3 0 0 1) (v/vec3) v/V3Y)}
+                                 {:view (mat/look-at (vec3 0 1 0) (vec3 0 1 0) (vec3 0 1 0))
+                                  :proj (mat/perspective 60 view 0.1 50)}))]
+
+    
+    (init-arcball state dom view)
+    
+    (swap! state merge
+           {:gl           gl
+            :scene        {:particles particles
+                           :planes planes}})))
+
+
+
+
+(defn update-app-3d
+  [state update-fn]
+  (anim/animate
+   (fn [t frame]
+     (swap! state update-fn)
+     (let [{:keys [gl scene trail cam active]} @state]
+       (update-attrib-buffer gl scene :position trail)
+       (doto gl
+         ;;(gl/set-viewport vrect)
+         (gl/clear-color-and-depth-buffer col/WHITE 1)
+         
+         (gl/draw-with-shader
+          (-> (:planes scene)
+              (assoc-in [:uniforms :model] (g/scale (arc/get-view (:cam @state))
+                                                    0.1))))
+         (gl/draw-with-shader
+          (-> (:particles scene)
+              (assoc :num-vertices (count trail))
+              (assoc-in [:uniforms :model] (g/scale (arc/get-view cam)
+                                                    0.1)))))
+       active))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+#_(defn ^:export demo
+    [state]
+    (let [gl    (gl/gl-context "art")
+          vrect (gl/get-viewport-rect gl)
+          shader     (sh/make-shader-from-spec gl phong/shader-spec)
+          size       20
+          ground-y   -1.55
+          ;;ground     (pl/plane-with-point (vec3 0 ground-y 0) v/V3Y)
+          back       (pl/plane-with-point (vec3 0 0 (* -0.5 size)) v/V3Z)
+          planes     (-> (g/as-mesh back {:mesh (glm/indexed-gl-mesh 4 #{:fnorm}) :size size})
+                         (g/translate (vec3 0 (+ (* 0.5 size) ground-y) 0))
+                         ;;             (g/into (g/as-mesh ground {:size size}))
+                         (gl/as-gl-buffer-spec {})
+                         (assoc :uniforms {:proj          (mat/perspective 70 vrect 0.1 50)
+                                           :view          (mat/look-at (v/vec3 0 0 1) (v/vec3) v/V3Y)
+                                           :lightPos      (vec3 0.1 0 1)
+                                           :ambientCol    0x000011
+                                           :diffuseCol    0x0033ff
+                                           :specularCol   0xffffff
+                                           :shininess     100
+                                           :wrap          0
+                                           :useBlinnPhong true}
+                                :shader shader)
+                         (gl/make-buffers-in-spec gl glc/static-draw))]
+      (init-arcball state (.getElementById js/document "art") vrect)
+      (anim/animate
+       (fn [t frame]
          (doto gl
-           (gl/set-viewport view-rect)
-           (gl/clear-color-and-depth-buffer 0.52 0.5 0.5 1 1)
-           (gl/draw-with-shader (cam/apply planes cam))
+           (gl/set-viewport vrect)
+           (gl/clear-color-and-depth-buffer col/BLACK 1)
            (gl/draw-with-shader
-            (-> box
-                (cam/apply cam)
-                (assoc-in [:uniforms :model] (g/translate M44 isec))))))
-       true))
-    state))
+            (assoc-in planes [:uniforms :model] (arc/get-view (:cam @state)))))
+         true))))

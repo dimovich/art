@@ -72,10 +72,8 @@
 
 
 
-(defn get-positions []
-  (let [arr (array)]
-    (fn [agents]
-      (map #(apply v/vec3 (.-pos %)) agents))))
+(defn get-positions [agents]
+  (map #(apply v/vec3 (.-pos %)) agents))
 
 
 (defn update-tree [tree]
