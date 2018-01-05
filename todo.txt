@@ -4,14 +4,15 @@
 
 * dist agent field
 
-* WebGL
-
 * emscripten
 
 * web controls
 
-* fix bug (bounce sign?)
+* fix bug (bounce sign?)... try bounding sphere
 
+* full window size
+
+* create/delete animation
 
 three.js
 https://gist.github.com/seabre/9030268
