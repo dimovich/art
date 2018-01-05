@@ -15,27 +15,9 @@
                  [cider/cider-nrepl         "0.15.1"]
 
                  [amalloy/ring-buffer "1.2.1"]
-                 
-                 [quil "2.6.0"]
-                 [com.taoensso/timbre "4.10.0"]
                  [thi.ng/geom "0.0.1178-SNAPSHOT"]
-                 #_(                 
-                    [thi.ng/math "0.2.1"]
-                    [thi.ng/color "1.2.0"]
-                    [thi.ng/dstruct "0.2.1"]
-                    [thi.ng/ndarray "0.3.2"]
-                    [thi.ng/shadergraph "0.3.0-SNAPSHOT"]
-                    [thi.ng/strf "0.2.2"]
-                    [thi.ng/typedarrays "0.1.6"]
-                    [thi.ng/xerror "0.1.0"]
-                    )
-                 ;;[org.jogamp.gluegen/gluegen-rt "2.3.2"]
-                 ;;[org.jogamp.jogl/jogl-all "2.3.2"]
-
                  
-                 ;; [org.jogamp.gluegen/gluegen-rt "2.3.2" :classifier "natives-linux-amd64"]
-                 ;; [org.jogamp.jogl/jogl-all "2.3.2" :classifier "natives-linux-amd64"]
-                 ])
+                 [com.taoensso/timbre "4.10.0"]])
 
 
 
