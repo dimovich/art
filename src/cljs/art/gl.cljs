@@ -16,13 +16,13 @@
    [thi.ng.geom.quaternion :as q]
    [thi.ng.geom.gl.arcball :as arc]
    [thi.ng.geom.aabb :as aa]
+   [thi.ng.geom.gl.glmesh :as glm]
+   [thi.ng.geom.attribs :as attr]
+   [thi.ng.geom.gl.shaders.basic :as basic]
    
    ;;[thi.ng.geom.gl.buffers :as buf]
    ;;[thi.ng.geom.gl.utils :as glu]
-   [thi.ng.geom.gl.glmesh :as glm]
    ;;[thi.ng.geom.gl.camera :as cam]
-   [thi.ng.geom.attribs :as attr]
-   [thi.ng.geom.gl.shaders.basic :as basic]
    ;;[thi.ng.glsl.core :as glsl :include-macros true]
    ;;[thi.ng.geom.plane :as pl]
    ;;[thi.ng.geom.gl.shaders.phong :as phong]
@@ -153,7 +153,7 @@
               (-> (:container scene)
                   (assoc-in [:uniforms :model]
                             (-> (arc/get-view cam)
-                                (g/scale 0.1)))))
+                                (g/scale 0.08)))))
            
              (gl/draw-with-shader
               (-> (:particles scene)
@@ -161,6 +161,5 @@
                   (assoc-in [:uniforms :model]
                             (-> (arc/get-view cam)
                                 (g/translate translate)
-                                (g/scale 0.08)
-                                )))))))))))
+                                (g/scale 0.08))))))))))))
 

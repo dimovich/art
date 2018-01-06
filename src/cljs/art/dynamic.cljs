@@ -35,8 +35,9 @@
 (defn update-state [state]
   (let [{:keys [agents tree-fn swarm-fn]} state]
     (a/move agents config)
-    (tree-fn agents)
-    ;;(swarm-fn agents config)
+    ;;(tree-fn agents)
+    ;;(a/create-tree agents config)
+    (swarm-fn agents config)
     (a/bounce agents config)
     (update state :trail a/update-trail agents)))
 
