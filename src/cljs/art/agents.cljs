@@ -71,9 +71,12 @@
 
 
 
+(defn update-trail [trail agents]
+  (if-let [a (first agents)]
+    (recur (into trail (.-pos a))
+           (next agents))
+    trail))
 
-(defn get-positions [agents]
-  (map #(apply v/vec3 (.-pos %)) agents))
 
 
 (defn update-tree [tree]

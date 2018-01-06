@@ -1,3 +1,11 @@
+- try without swarm, only tree-fn
+
+- try THREE.js octree
+
+- try sphere and bounds
+
+- copy positions directly into trail
+
 * re-use octree (set-point, get-children...)
 
 * mutable ring buffer

@@ -31,6 +31,44 @@
 
 
 
+
+(def shader-spec
+  {:vs "void main() {
+    gl_Position = proj * view * model * vec4(position, 1.0);
+    gl_PointSize = 6.0 - min(gl_Position.w*0.5, 5.0);
+    p = normalize(position);
+    vCol = vec4(p.x, p.y, p.z, 1);
+    }"
+   :fs "void main() {
+    gl_FragColor = vCol;
+    }"
+   :uniforms {:model      [:mat4 M44]
+              :view       :mat4
+              :proj       :mat4}
+   :attribs  {:position   :vec3}
+   :varying  {:vCol       :vec4
+              :p :vec3}
+   :state    {:depth-test true}})
+
+
+
+(defn attrib-buffer-view
+  [data]
+  (arrays/float32 data))
+
+
+
+(defn update-attrib-buffer
+  [gl scene attrib data]
+  (.bindBuffer gl glc/array-buffer
+               (get-in scene [:particles :attribs attrib :buffer]))
+  (.bufferData gl glc/array-buffer
+               (attrib-buffer-view data)
+               glc/dynamic-draw))
+
+
+
+
 (defn init-arcball
   [state el vrect]
   (swap! state assoc :cam
@@ -54,46 +92,10 @@
 
 
 
-
-(def shader-spec
-  {:vs "void main() {
-    p = normalize(position);
-    vCol = vec4(p.x, p.y, p.z, 1);
-    gl_Position = proj * view * model * vec4(position, 1.0);
-    gl_PointSize = 6.0 - gl_Position.w*0.5;
-    }"
-   :fs "void main() {
-    gl_FragColor = vCol;
-    }"
-   :uniforms {:model      [:mat4 M44]
-              :view       :mat4
-              :proj       :mat4}
-   :attribs  {:position   :vec3}
-   :varying  {:vCol       :vec4
-              :p :vec3}
-   :state    {:depth-test true}})
-
-
-
-(defn attrib-buffer-view
-  [data]
-  (arrays/float32 (apply concat data)))
-
-
-
-(defn update-attrib-buffer
-  [gl scene attrib data]
-  (.bindBuffer gl glc/array-buffer
-               (get-in scene [:particles :attribs attrib :buffer]))
-  (.bufferData gl glc/array-buffer
-               (attrib-buffer-view data)
-               glc/dynamic-draw))
-
-
-
 (defn init-app-3d
-  [state dom]
-  (let [positions    (a/get-positions (:agents @state))
+  [state]
+  (let [positions    (:trail @state)
+        dom          (:canvas @state)
         gl           (gl/gl-context dom)
         view         (gl/get-viewport-rect gl)
 
@@ -116,7 +118,7 @@
                                                 :size   3
                                                 :stride 12}}
                           :mode     glc/points
-                          :num-vertices (count positions)}
+                          :num-vertices (/ (count positions) 3)}
                          (gl/make-buffers-in-spec gl glc/dynamic-draw)
                          (assoc :shader (sh/make-shader-from-spec gl shader-spec))
                          (update :uniforms merge
@@ -136,28 +138,29 @@
 
 (defn update-app-3d
   [state update-fn]
-  (anim/animate
-   (fn [t frame]
-     (when (:active @state)
-       (swap! state update-fn))
+  (let [start-uuid (:uuid @state)]
+    (anim/animate
+     (fn [t frame]
+       (when (:active @state)
+         (swap! state update-fn))
 
-     (let [{:keys [gl scene trail cam translate]} @state]
-       (update-attrib-buffer gl scene :position trail)
-       (doto gl
-         (gl/clear-color-and-depth-buffer col/WHITE 1)
-         (gl/draw-with-shader
-          (-> (:container scene)
-              (assoc-in [:uniforms :model]
-                        (-> (arc/get-view cam)
-                            (g/scale 0.1)))))
+       (let [{:keys [gl scene trail cam translate uuid]} @state]
+         (when (= uuid start-uuid)
+           (update-attrib-buffer gl scene :position trail)
+           (doto gl
+             (gl/clear-color-and-depth-buffer col/WHITE 1)
+             (gl/draw-with-shader
+              (-> (:container scene)
+                  (assoc-in [:uniforms :model]
+                            (-> (arc/get-view cam)
+                                (g/scale 0.1)))))
            
-         (gl/draw-with-shader
-          (-> (:particles scene)
-              (assoc :num-vertices (count trail))
-              (assoc-in [:uniforms :model]
-                        (-> (arc/get-view cam)
-                            (g/translate translate)
-                            (g/scale 0.08)
-                            ))))))
-     true)))
+             (gl/draw-with-shader
+              (-> (:particles scene)
+                  (assoc :num-vertices (/ (count trail) 3))
+                  (assoc-in [:uniforms :model]
+                            (-> (arc/get-view cam)
+                                (g/translate translate)
+                                (g/scale 0.08)
+                                )))))))))))
 

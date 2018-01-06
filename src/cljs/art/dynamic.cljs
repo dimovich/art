@@ -16,11 +16,19 @@
 (defn setup [config]
   (let [tree   (apply t/octree 0 0 0 (:size config))
         agents (a/generate-agents config)
-        trail  (r/ring-buffer (:trail-size config))]
+        trail  (r/ring-buffer (:trail-size config))
+        canvas (.getElementById js/document (:canvas config))]
+
+    (set! (.-width canvas) (* 0.9 (.-innerWidth js/window)))
+    (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
+  
     {:tree-fn (a/update-tree tree)
      :swarm-fn (a/swarm tree config)
-     :trail (into trail (a/get-positions agents))
-     :agents agents}))
+     :trail (a/update-trail trail agents)
+     :agents agents
+     :canvas canvas
+     :active true
+     :uuid (inc (:uuid @state))}))
 
 
 
@@ -28,15 +36,15 @@
   (let [{:keys [agents tree-fn swarm-fn]} state]
     (a/move agents config)
     (tree-fn agents)
-    (swarm-fn agents config)
+    ;;(swarm-fn agents config)
     (a/bounce agents config)
-    (update state :trail into (a/get-positions agents))))
+    (update state :trail a/update-trail agents)))
 
 
 
 (defn ^:export create []
-  (swap! state merge (setup config))
-  (agl/init-app-3d state (.getElementById js/document "art"))
+  (reset! state (setup config))
+  (agl/init-app-3d state)
   (agl/update-app-3d state update-state))
 
 

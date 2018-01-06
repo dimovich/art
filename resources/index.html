@@ -7,14 +7,18 @@
   <script type="text/javascript" src="dev-resources/webgl-texture-float-extension-shims.js"></script>
 
   <style type="text/css" media="screen">
+    body {margin:0;}
     .stats { position: fixed; top: 0px; left: 0px; }
+    #art {display: block; margin: auto;}
+    .wrapper {position: relative;}
   </style>  
 </head>
 <body>
-  <button onclick="art.dynamic.create();">create</button>
-  <button onclick="art.dynamic.toggle();">stop/go</button>
-  <br>
-  <canvas id="art" width="1200px" height="600px"></canvas>
+  <div class="wrapper">
+    <button onclick="art.dynamic.create();">create</button>
+    <button onclick="art.dynamic.toggle();">stop/go</button>
+    <canvas id="art"></canvas>
+  </div>
 </body>
 </html>
 
