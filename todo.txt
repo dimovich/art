@@ -24,3 +24,9 @@
 
 three.js
 https://gist.github.com/seabre/9030268
+
+
+
+;;
+;; adding two out-of-bounds points will create a endless loop
+;;

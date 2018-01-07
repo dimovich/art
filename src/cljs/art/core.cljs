@@ -2,6 +2,5 @@
   (:require [art.dynamic :as d]))
 
 
-(defn ^:export main []
-  (d/create))
+(defn ^:export main [])
 

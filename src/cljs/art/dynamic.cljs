@@ -14,10 +14,13 @@
 
 
 (defn setup [config]
-  (let [tree   (apply t/octree 0 0 0 (:size config))
-        agents (a/generate-agents config)
-        trail  (r/ring-buffer (:trail-size config))
-        canvas (.getElementById js/document (:canvas config))]
+  (let [size (:size config)
+        tree    (apply t/octree
+                       (concat (map (partial * -1) size)
+                               (map (partial * 2) size)))
+        agents  (a/generate-agents config)
+        trail   (r/ring-buffer (:trail-size config))
+        canvas  (.getElementById js/document (:canvas config))]
 
     (set! (.-width canvas) (* 0.9 (.-innerWidth js/window)))
     (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
@@ -34,10 +37,9 @@
 
 (defn update-state [state]
   (let [{:keys [agents tree-fn swarm-fn]} state]
-    (a/move agents config)
     ;;(tree-fn agents)
-    ;;(a/create-tree agents config)
     (swarm-fn agents config)
+    (a/move agents config)
     (a/bounce agents config)
     (update state :trail a/update-trail agents)))
 

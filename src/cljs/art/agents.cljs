@@ -25,7 +25,6 @@
 
 
 (defn move [agents {:keys [max-vel]}]
-  (info "move")
   (let [size (count agents)]
     (loop [idx 0]
       (when (< idx size)
@@ -34,7 +33,6 @@
               pos (.-pos a)
               vel (.-vel a)
               f (m/limit (m/+ vel acc) max-vel)]
-          (info pos vel acc)
           (m/+! pos f)
           (m/*! vel 0)
           (m/+! vel f)
@@ -49,7 +47,6 @@
 
 
 (defn bounce [agents {[w h d] :size}]
-  (info "bounce")
   (let [size (count agents)]
     (loop [idx 0]
       (when (< idx size)
@@ -80,20 +77,18 @@
     trail))
 
 
-
-(defn create-tree [agents config]
-  (info "create-tree")
+(defn create-tree [agents {[w h d] :size}]
   (let [size (count agents)]
-    (loop [idx 0 tree (apply t/octree 0 0 0 (:size config))]
+    (loop [idx 0 tree (t/octree (* -1 w) (* -1 h) (* -1 d) (* w 2) (* h 2) (* d 2))]
       (if (< idx size)
-        (recur (inc idx) (g/add-point tree (.-pos (aget agents idx)) idx))
+        (recur (inc idx)
+               (g/add-point tree (.-pos (aget agents idx)) idx))
         tree))))
 
 
 
 (defn update-tree [tree]
   (fn [agents]
-    (info "update-tree")
     (t/set-children tree nil)
     (let [size (count agents)]
       (loop [idx 0]
@@ -104,7 +99,6 @@
 
 
 (defn swarm-separate [agents dists a others r mod]
-  (info "swarm-separate")
   (let [apos (.-pos a)
         size (count others)]
     (-> (loop [idx 0 force (v/vec3)]
@@ -125,7 +119,6 @@
 
 
 (defn swarm-align [agents dists a others radius mod]
-  (info "swarm-align")
   (let [apos (.-pos a)
         avel (.-vel a)
         size (count others)]
@@ -147,7 +140,6 @@
 
 
 (defn swarm-cohere [agents dists a others radius mod]
-  (info "swarm-cohere")
   (let [apos (.-pos a)
         force (-> (loop [others others force (v/vec3)]
                     (if-let [idx (first others)]
@@ -170,7 +162,6 @@
 
 
 (defn distance [agents a others]
-  (info "distance")
   (let [size (count others)
         pos (.-pos a)]
     (loop [idx 0 dists []]
@@ -187,6 +178,7 @@
        {:keys [radius cohesion
                separation alignment
                view-angle max-vel size] :as config}]
+
     (let [size (count agents)
           tree (create-tree agents config)]
       (loop [idx 0]
@@ -194,11 +186,9 @@
           (let [a (aget agents idx)
                 acc (.-acc a)
                 pos (.-pos a)
-                _ (info "selecting" pos)
                 others (t/select-with-sphere tree pos radius)
                 dists (distance agents a others)]
-            (info "inside")
-            (if (<= 3 (count others))
+            (if (<= 2 (count others))
               (m/+! acc (m/+ (swarm-separate agents dists a others radius separation)
                              (swarm-align agents dists a others radius alignment)
                              (swarm-cohere agents dists a others radius cohesion)))
