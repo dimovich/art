@@ -77,12 +77,40 @@
     trail))
 
 
+
+(defn add-point*
+  "Associates point with data in tree, recursively creates all required intermediate nodes."
+  [root p d]
+  (loop [node root, p p, d d]
+    (info "adding" p)
+    (if (t/get-children node)
+      (recur (t/make-child-for-point node p d false) p d)
+      (let [point (g/get-point node)]
+        (if point
+          (if-not (m/delta= point p m/*eps*)
+            (let [data (g/get-point-data node)]
+              (t/split-node node)
+              (t/make-child-for-point node p d true)
+              (recur node point data)))
+          (t/set-point node p d)))))
+  root)
+
+
+
 (defn create-tree [agents {[w h d] :size}]
   (let [size (count agents)]
-    (loop [idx 0 tree (t/octree (* -1 w) (* -1 h) (* -1 d) (* w 2) (* h 2) (* d 2))]
+    (loop [idx 0
+           tree (t/octree (* -1 w) (* -1 h) (* -1 d)
+                          (* w 2) (* h 2) (* d 2))]
       (if (< idx size)
-        (recur (inc idx)
-               (g/add-point tree (.-pos (aget agents idx)) idx))
+        (let [p (.-pos (aget agents idx))]
+          (recur (inc idx)
+                 (g/add-point tree p idx)
+                 #_(if (and (pos? (get p 0))
+                            (pos? (get p 1))
+                            (pos? (get p 2)))
+                     (add-point* tree p idx)
+                     tree)))
         tree))))
 
 
