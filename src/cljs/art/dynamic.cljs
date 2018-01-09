@@ -3,7 +3,6 @@
             [thi.ng.geom.core :as g]
             [thi.ng.geom.vector :as v]
             [thi.ng.math.core :as m]
-            [thi.ng.geom.spatialtree :as t]
             [thi.ng.typedarrays.core :as ta]
             [art.agents :as a]
             [taoensso.timbre :refer [info]]
@@ -15,9 +14,6 @@
 
 (defn setup [config]
   (let [size (:size config)
-        tree    (apply t/octree
-                       (concat (map (partial * -1) size)
-                               (map (partial * 2) size)))
         agents  (a/generate-agents config)
         trail   (r/ring-buffer (:trail-size config))
         canvas  (.getElementById js/document (:canvas config))]
@@ -25,8 +21,7 @@
     (set! (.-width canvas) (* 0.9 (.-innerWidth js/window)))
     (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
   
-    {:tree-fn (a/update-tree tree)
-     :swarm-fn (a/swarm tree config)
+    {:swarm-fn (a/swarm config)
      :trail (a/update-trail trail agents)
      :agents agents
      :canvas canvas
@@ -36,10 +31,9 @@
 
 
 (defn update-state [state]
-  (let [{:keys [agents tree-fn swarm-fn]} state]
-    ;;(tree-fn agents)
-    (swarm-fn agents config)
+  (let [{:keys [agents swarm-fn]} state]
     (a/move agents config)
+    (swarm-fn agents)
     (a/bounce agents config)
     (update state :trail a/update-trail agents)))
 

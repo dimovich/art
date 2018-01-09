@@ -14,6 +14,8 @@
                  [org.clojure/tools.nrepl   "0.2.13"]
                  [cider/cider-nrepl         "0.15.1"]
 
+                 [org.clojure/test.check "0.10.0-alpha2"]
+
                  [amalloy/ring-buffer "1.2.1"]
                  [thi.ng/geom "0.0.1178-SNAPSHOT"]
                  
