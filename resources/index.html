@@ -2,23 +2,16 @@
 <head>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0">
   <title>art</title>
-  <script type="text/javascript" src="js/main.js"></script>
-  <script type="text/javascript" src="dev-resources/stats.js"></script>
-  <script type="text/javascript" src="dev-resources/webgl-texture-float-extension-shims.js"></script>
-
-  <style type="text/css" media="screen">
-    body {margin:0;}
-    .stats { position: fixed; top: 0px; left: 0px; }
-    #art {display: block; margin: auto;}
-    .wrapper {position: relative;}
-  </style>  
+  <link rel="stylesheet" href="css/style.css" type="text/css">
 </head>
 <body>
   <div class="wrapper">
-    <button onclick="art.dynamic.create();">create</button>
-    <button onclick="art.dynamic.toggle();">stop/go</button>
+    <div class="control-wrapper paused"></div>
+    <div class="close-wrapper hidden"></div>
     <canvas id="art"></canvas>
   </div>
 </body>
+<script type="text/javascript" src="js/main.js"></script>
+<script>art.core.main();</script>
 </html>
 

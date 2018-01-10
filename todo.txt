@@ -1,3 +1,5 @@
+- audio
+
 - find minimal fail case
 
 - CIDER debugger
@@ -10,8 +12,6 @@
 
 - copy positions directly into trail
 
-* re-use octree (set-point, get-children...)
-
 * mutable ring buffer
 
 * dist agent field
@@ -20,11 +20,7 @@
 
 * web controls
 
-* fix bug (bounce sign?)... try bounding sphere
 
-* full window size
-
-* create/delete animation
 
 three.js
 https://gist.github.com/seabre/9030268

@@ -15,7 +15,7 @@
 (defn setup [config]
   (let [size (:size config)
         agents  (a/generate-agents config)
-        trail   (r/ring-buffer (:trail-size config))
+        trail   (r/ring-buffer (* 3 (:trail-size config)))
         canvas  (.getElementById js/document (:canvas config))]
 
     (set! (.-width canvas) (* 0.9 (.-innerWidth js/window)))
@@ -39,12 +39,19 @@
 
 
 
-(defn ^:export create []
+(defn create! []
   (reset! state (setup config))
   (agl/init-app-3d state)
   (agl/update-app-3d state update-state))
 
 
 
-(defn ^:export toggle []
+(defn toggle! []
   (swap! state update :active not))
+
+
+(defn destroy! []
+  (let [canvas (:canvas @state)]
+    (set! (.-width canvas) 1)
+    (set! (.-height canvas) 1)
+    (reset! state nil)))

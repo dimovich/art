@@ -1,0 +1,47 @@
+body {
+    margin: 0 1em;
+}
+
+
+#art {
+    display: block;
+    margin: auto;
+}
+
+
+.wrapper {position: relative;}
+
+
+.control-wrapper {
+    width: 3em;
+    height: 3em;
+    cursor: pointer;
+    display: inline-block;
+}
+
+
+.paused, .playing { z-index: 100; }
+
+.paused {
+    background-image: url('../svg/play.svg');
+    background-size: cover;
+}
+
+.playing {
+    background-image: url('../svg/pause.svg');
+    background-size: cover;
+}
+
+.close-wrapper {
+    width: 2em;
+    height: 2em;
+    background-image: url('../svg/close.svg');
+    background-size: cover;
+    position: absolute;
+    right:0;
+    display: inline-block;
+    margin: 0.5em;
+    cursor: pointer;
+}
+
+.hidden { display: none; }

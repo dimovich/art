@@ -2,11 +2,11 @@
 
 
 (def config {:canvas "art"
-             :agent-count 50
+             :agent-count 70
              :size [13 13 13]
-             :radius 4
+             :radius 3
              :cohesion 0.039
              :separation 0.04
-             :alignment 0.06
-             :max-vel 0.2
-             :trail-size (* 3 80)})
+             :alignment 0.05
+             :max-vel 0.18
+             :trail-size 100})

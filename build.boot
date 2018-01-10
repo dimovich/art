@@ -18,7 +18,8 @@
 
                  [amalloy/ring-buffer "1.2.1"]
                  [thi.ng/geom "0.0.1178-SNAPSHOT"]
-                 
+
+                 [prismatic/dommy "1.1.0"]
                  [com.taoensso/timbre "4.10.0"]])
 
 
@@ -68,7 +69,7 @@
   (task-options! cljs  {:optimizations :advanced})
   (comp
    (cljs)
-   (sift :include #{#"js/.*js" #"index.html"})
+   (sift :include #{#"js/.*js" #"index.html" #"css/.*css" #"svg/.*svg"})
    (target :dir #{"release-js"})))
 
 
