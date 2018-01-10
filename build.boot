@@ -69,7 +69,7 @@
   (task-options! cljs  {:optimizations :advanced})
   (comp
    (cljs)
-   (sift :include #{#"js/.*js" #"index.html" #"css/.*css" #"svg/.*svg"})
+   (sift :include #{#"js/.*js$" #"index.html$" #"css/.*css$" #"svg/.*svg$"})
    (target :dir #{"release-js"})))
 
 

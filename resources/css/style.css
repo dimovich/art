@@ -27,10 +27,12 @@ body {
     background-size: cover;
 }
 
+
 .playing {
     background-image: url('../svg/pause.svg');
     background-size: cover;
 }
+
 
 .close-wrapper {
     width: 2em;
@@ -42,6 +44,17 @@ body {
     display: inline-block;
     margin: 0.5em;
     cursor: pointer;
+}
+
+.refresh-wrapper {
+    width: 2em;
+    height: 2em;
+    background-image: url('../svg/refresh.svg');
+    background-size: cover;
+    display: inline-block;
+    margin: 0.5em 0.3em;
+    cursor: pointer;
+    opacity: 0.8;
 }
 
 .hidden { display: none; }

@@ -25,7 +25,7 @@
      :trail (a/update-trail trail agents)
      :agents agents
      :canvas canvas
-     :active true
+     ;;:active true
      :uuid (inc (:uuid @state))}))
 
 
@@ -40,7 +40,7 @@
 
 
 (defn create! []
-  (reset! state (setup config))
+  (swap! state merge (setup config))
   (agl/init-app-3d state)
   (agl/update-app-3d state update-state))
 
@@ -54,4 +54,6 @@
   (let [canvas (:canvas @state)]
     (set! (.-width canvas) 1)
     (set! (.-height canvas) 1)
-    (reset! state nil)))
+    (swap! state select-keys [:active :uuid])
+    ;;(reset! state nil)
+    ))

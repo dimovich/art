@@ -18,30 +18,20 @@
    [thi.ng.geom.aabb :as aa]
    [thi.ng.geom.gl.glmesh :as glm]
    [thi.ng.geom.attribs :as attr]
-   [thi.ng.geom.gl.shaders.basic :as basic]
-   
-   ;;[thi.ng.geom.gl.buffers :as buf]
-   ;;[thi.ng.geom.gl.utils :as glu]
-   ;;[thi.ng.geom.gl.camera :as cam]
-   ;;[thi.ng.glsl.core :as glsl :include-macros true]
-   ;;[thi.ng.geom.plane :as pl]
-   ;;[thi.ng.geom.gl.shaders.phong :as phong]
-   ;;[thi.ng.geom.mesh.io :as mio]
-   ))
-
+   [thi.ng.geom.gl.shaders.basic :as basic]))
 
 
 
 (def shader-spec
   {:vs "void main() {
-    gl_Position = proj * view * model * vec4(position, 1.0);
-    gl_PointSize = 6.0 - min(gl_Position.w*0.5, 5.0);
-    p = normalize(position);
-    vCol = vec4(p.x, p.y, p.z, 1);
-    }"
+          gl_Position = proj * view * model * vec4(position, 1.0);
+          gl_PointSize = 6.0 - min(gl_Position.w*0.5, 4.0);
+          p = normalize(position);
+          vCol = vec4(p.x, p.y, p.z, 1);
+        }"
    :fs "void main() {
-    gl_FragColor = vCol;
-    }"
+          gl_FragColor = vCol;
+        }"
    :uniforms {:model      [:mat4 M44]
               :view       :mat4
               :proj       :mat4}
@@ -149,11 +139,12 @@
            (update-attrib-buffer gl scene :position trail)
            (doto gl
              (gl/clear-color-and-depth-buffer col/WHITE 1)
+             
              (gl/draw-with-shader
               (-> (:container scene)
                   (assoc-in [:uniforms :model]
                             (-> (arc/get-view cam)
-                                (g/scale 0.08)))))
+                                (g/scale 0.075)))))
            
              (gl/draw-with-shader
               (-> (:particles scene)
@@ -161,5 +152,5 @@
                   (assoc-in [:uniforms :model]
                             (-> (arc/get-view cam)
                                 (g/translate translate)
-                                (g/scale 0.08))))))))))))
+                                (g/scale 0.075))))))))))))
 

@@ -6,29 +6,33 @@
 
 
 (defn init []
-  (let [player (d/sel1 :.control-wrapper)
-        closer (d/sel1 :.close-wrapper)]
+  (let [player    (d/sel1 :.control-wrapper)
+        refresher (d/sel1 :.refresh-wrapper)]
     
     (d/listen! player :click
                (fn [_]
                  (if (and (d/has-class? player :paused)
-                          (d/has-class? closer :hidden))
+                          (d/has-class? refresher :hidden))
                    (do
                      (art/create!)
-                     (d/remove-class! closer :hidden))
+                     (d/remove-class! refresher :hidden))
                    
                    (art/toggle!))
                  
                  (d/toggle-class! player :playing)
                  (d/toggle-class! player :paused)))
 
+
     
-    (d/listen! closer :click
+    (d/listen! refresher :click
                (fn [_]
                  (art/destroy!)
-                 (d/remove-class! player :playing)
-                 (d/add-class! player :paused)
-                 (d/add-class! closer :hidden)))))
+                 (art/create!)
+                 ;;(d/remove-class! player :playing)
+                 ;;(d/add-class! player :paused)
+                 ;;(d/add-class! closer :hidden)
+                 ))))
+
 
 
 (defn ^:export main []
