@@ -4,6 +4,8 @@
             [taoensso.timbre :refer [info]]))
 
 
+(def state (atom {:active true}))
+
 
 (defn init []
   (let [player    (d/sel1 :.control-wrapper)
@@ -14,24 +16,16 @@
                  (if (and (d/has-class? player :paused)
                           (d/has-class? refresher :hidden))
                    (do
-                     (art/create!)
+                     (art/create! state)
                      (d/remove-class! refresher :hidden))
                    
-                   (art/toggle!))
+                   (art/toggle! state))
                  
                  (d/toggle-class! player :playing)
                  (d/toggle-class! player :paused)))
 
 
-    
-    (d/listen! refresher :click
-               (fn [_]
-                 (art/destroy!)
-                 (art/create!)
-                 ;;(d/remove-class! player :playing)
-                 ;;(d/add-class! player :paused)
-                 ;;(d/add-class! closer :hidden)
-                 ))))
+    (d/listen! refresher :click #(art/restart! state))))
 
 
 

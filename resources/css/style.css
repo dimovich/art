@@ -1,5 +1,15 @@
+@font-face {
+    font-family: 'GothamMedium';
+    src:url('../fonts/GothamMedium.otf');
+    font-weight: normal;
+    font-style: normal;
+}
+
+
 body {
+    font-size: 14px;
     margin: 0 1em;
+    font-family: 'GothamMedium';
 }
 
 
@@ -46,6 +56,7 @@ body {
     cursor: pointer;
 }
 
+
 .refresh-wrapper {
     width: 2em;
     height: 2em;
@@ -57,4 +68,28 @@ body {
     opacity: 0.8;
 }
 
+
 .hidden { display: none; }
+
+
+.config-wrapper {
+    display: inline-block;
+    position: absolute;
+    right: 0;
+    top: 0.5em;
+}
+
+
+.config-item {
+    width: 8em;
+    margin: 0 0.5em;
+    text-align: center;
+    display: inline-block;
+}
+
+
+.config-item input {
+    display: block;
+    margin: auto;
+    margin-top: 0.2em;
+}

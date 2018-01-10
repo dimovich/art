@@ -59,8 +59,7 @@
 
 
 
-(defn init-arcball
-  [state el vrect]
+(defn init-arcball! [state el vrect]
   (swap! state assoc :cam
          (-> (arc/arcball {:init (m/normalize (q/quat 0.0 0.707 0.707 0))})
              (arc/resize (g/width vrect) (g/height vrect))))
@@ -68,12 +67,16 @@
     (.addEventListener
      "mousedown"
      (fn [e]
+       (swap! state assoc :prev-static (:static @state))
+       (swap! state assoc :static false)
        (doto state
          (swap! assoc :mouse-down true)
          (swap! update :cam arc/down (.-clientX e) (.-clientY e)))))
     (.addEventListener
      "mouseup"
-     (fn [e] (swap! state assoc :mouse-down false)))
+     (fn [e]
+       (swap! state assoc :static (:prev-static @state))
+       (swap! state assoc :mouse-down false)))
     (.addEventListener
      "mousemove"
      (fn [e]
@@ -82,8 +85,7 @@
 
 
 
-(defn init-app-3d
-  [state]
+(defn init-app-3d [state]
   (let [positions    (:trail @state)
         dom          (:canvas @state)
         gl           (gl/gl-context dom)
@@ -115,7 +117,8 @@
                                  {:view (mat/look-at (vec3 0 1 0) (vec3 0 1 0) (vec3 0 1 0))
                                   :proj (mat/perspective 50 view 0.1 100)}))]
     
-    (init-arcball state dom view)
+    (when-not (:cam @state)
+      (init-arcball! state dom view))
     
     (swap! state merge
            {:gl           gl
@@ -134,23 +137,25 @@
        (when (:active @state)
          (swap! state update-fn))
 
-       (let [{:keys [gl scene trail cam translate uuid]} @state]
+       (let [{:keys [gl scene trail cam translate uuid static]} @state]
          (when (= uuid start-uuid)
-           (update-attrib-buffer gl scene :position trail)
-           (doto gl
-             (gl/clear-color-and-depth-buffer col/WHITE 1)
+           (when-not static
+             (update-attrib-buffer gl scene :position trail)
+             (doto gl
+               (gl/clear-color-and-depth-buffer col/WHITE 1)
              
-             (gl/draw-with-shader
-              (-> (:container scene)
-                  (assoc-in [:uniforms :model]
-                            (-> (arc/get-view cam)
-                                (g/scale 0.075)))))
+               (gl/draw-with-shader
+                (-> (:container scene)
+                    (assoc-in [:uniforms :model]
+                              (-> (arc/get-view cam)
+                                  (g/scale 0.075)))))
            
-             (gl/draw-with-shader
-              (-> (:particles scene)
-                  (assoc :num-vertices (/ (count trail) 3))
-                  (assoc-in [:uniforms :model]
-                            (-> (arc/get-view cam)
-                                (g/translate translate)
-                                (g/scale 0.075))))))))))))
+               (gl/draw-with-shader
+                (-> (:particles scene)
+                    (assoc :num-vertices (/ (count trail) 3))
+                    (assoc-in [:uniforms :model]
+                              (-> (arc/get-view cam)
+                                  (g/translate translate)
+                                  (g/scale 0.075)))))))
+           true))))))
 

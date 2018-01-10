@@ -1,19 +1,17 @@
 (ns art.dynamic
-  (:require [amalloy.ring-buffer :as r]
-            [thi.ng.geom.core :as g]
-            [thi.ng.geom.vector :as v]
-            [thi.ng.math.core :as m]
-            [thi.ng.typedarrays.core :as ta]
+  (:require [taoensso.timbre :refer [info]]
+            [thi.ng.geom.core    :as g]
+            [thi.ng.geom.vector  :as v]
+            [thi.ng.math.core    :as m]
+            [amalloy.ring-buffer :as r]
+            [art.config :refer [config]]
             [art.agents :as a]
-            [taoensso.timbre :refer [info]]
-            [art.gl :as agl]
-            [art.config :refer [config]]))
+            [art.gl     :as agl]))
 
-(def state (atom {:active true}))
 
 
 (defn setup [config]
-  (let [size (:size config)
+  (let [size    (:size config)
         agents  (a/generate-agents config)
         trail   (r/ring-buffer (* 3 (:trail-size config)))
         canvas  (.getElementById js/document (:canvas config))]
@@ -21,39 +19,51 @@
     (set! (.-width canvas) (* 0.9 (.-innerWidth js/window)))
     (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
   
-    {:swarm-fn (a/swarm config)
-     :trail (a/update-trail trail agents)
+    {:trail (a/update-trail trail agents)
      :agents agents
      :canvas canvas
-     ;;:active true
-     :uuid (inc (:uuid @state))}))
+     :uuid (.. (js/Date.) getTime)}))
 
 
 
 (defn update-state [state]
-  (let [{:keys [agents swarm-fn]} state]
-    (a/move agents config)
-    (swarm-fn agents)
-    (a/bounce agents config)
+  (let [{:keys [agents config]} state]
+    ((juxt a/move a/swarm a/bounce) agents config)
     (update state :trail a/update-trail agents)))
 
 
 
-(defn create! []
-  (swap! state merge (setup config))
-  (agl/init-app-3d state)
-  (agl/update-app-3d state update-state))
+(defn create! [state]
+  (let [config (or (:config @state) config)
+        static (:static @state)]
+
+    (swap! state merge
+           {:config config :static false}
+           (setup config))
+    
+    (agl/init-app-3d state)
+    (agl/update-app-3d state update-state)
+
+    (swap! state assoc :static static)))
 
 
 
-(defn toggle! []
-  (swap! state update :active not))
+(defn toggle! [state]
+  (doto state
+    (swap! update :active not)
+    (swap! update :static not)))
 
 
-(defn destroy! []
+
+(defn destroy! [state]
   (let [canvas (:canvas @state)]
     (set! (.-width canvas) 1)
     (set! (.-height canvas) 1)
-    (swap! state select-keys [:active :uuid])
-    ;;(reset! state nil)
-    ))
+    (swap! state select-keys
+           [:active :static :config :cam])))
+
+
+
+(defn restart! [state]
+  (destroy! state)
+  (create! state))
