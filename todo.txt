@@ -10,15 +10,11 @@
 
 - try sphere and bounds
 
-- copy positions directly into trail
-
 * mutable ring buffer
 
 * dist agent field
 
 * emscripten
-
-* web controls
 
 
 
