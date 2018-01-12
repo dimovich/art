@@ -82,13 +82,15 @@ body {
 
 .config-item {
     width: 8em;
-    margin: 0 0.5em;
+    margin: 0 1em;
     text-align: center;
     display: inline-block;
+    position: relative;
 }
 
 
 .config-item input {
+    width: 80%;
     display: block;
     margin: auto;
     margin-top: 0.2em;

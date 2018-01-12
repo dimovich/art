@@ -16,13 +16,13 @@
         trail   (r/ring-buffer (* 3 (:trail-size config)))
         canvas  (.getElementById js/document (:canvas config))]
 
-    (set! (.-width canvas) (* 0.9 (.-innerWidth js/window)))
+    (set! (.-width canvas)  (* 0.9 (.-innerWidth js/window)))
     (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
   
-    {:trail (a/update-trail trail agents)
+    {:trail  (a/update-trail trail agents)
+     :uuid   (.. (js/Date.) getTime)
      :agents agents
-     :canvas canvas
-     :uuid (.. (js/Date.) getTime)}))
+     :canvas canvas}))
 
 
 
@@ -34,12 +34,11 @@
 
 
 (defn create! [state]
-  (let [config (or (:config @state) config)
-        static (:static @state)]
-
-    (swap! state merge
-           {:config config :static false}
-           (setup config))
+  (let [static (:static @state)]
+    
+    (->> (setup (:config @state))
+         (merge {:static false})
+         (swap! state merge))
     
     (agl/init-app-3d state)
     (agl/update-app-3d state update-state)
