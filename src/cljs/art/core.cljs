@@ -51,8 +51,8 @@
                        (get-in @state [:config :max-swarm])))
          doall)
 
-    (set-range-input state 0.5 :max-vel)
-    (set-range-input state (* 0.5 (get-in @state [:config :size 0]))
+    (set-range-input state 0.4 :max-vel)
+    (set-range-input state (get-in @state [:config :size 0])
                      :radius)))
 
 

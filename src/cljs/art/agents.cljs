@@ -2,9 +2,7 @@
   (:require [thi.ng.geom.core :as g]
             [thi.ng.math.core :as m]
             [thi.ng.geom.vector :as v]
-            [thi.ng.geom.physics.core :as p]
             [thi.ng.geom.spatialtree :as t]
-            [thi.ng.typedarrays.core :as ta]
             [taoensso.timbre :refer [info]]))
 
 
@@ -147,15 +145,15 @@
 (defn swarm-cohere [agents a r mod]
   (let [apos (.-pos a)
         size (count agents)
-        force (loop [idx 0 force (v/vec3) near 0]
+        force (loop [idx 0 force (v/vec3) num 0]
                 (if (< idx size)
                   (let [other (get agents idx)]
                     (if-not (.-dist other)
-                      (recur (inc idx) force near)
-                      (recur (inc idx) (m/+ force (.-pos other)) (inc near))))
-                  (if (zero? near)
-                    force
-                    (m/div force near))))
+                      (recur (inc idx) force num)
+                      (recur (inc idx) (m/+ force (.-pos other)) (inc num))))
+                  (if (zero? num)
+                    apos
+                    (m/div force num))))
         
         dist (g/dist apos force)]
     
@@ -183,16 +181,19 @@
 (defn distance2! [agents a r]
   (let [size (count agents)
         pos (.-pos a)]
-    (loop [idx 0]
-      (when (< idx size)
+    (loop [idx 0 num 0]
+      (if (< idx size)
         (let [other (get agents idx)
               pos2 (.-pos other)
               d (g/dist pos pos2)]
-          (set! (.-dist other)
-                (when-not (or (zero? d)
-                              (> d r))
-                  d))
-          (recur (inc idx)))))))
+          (if (or (zero? d) (> d r))
+            (do
+              (set! (.-dist other) nil)
+              (recur (inc idx) num))
+            (do
+              (set! (.-dist other) d)
+              (recur (inc idx) (inc num)))))
+        num))))
 
 
 
@@ -203,9 +204,12 @@
   (let [size (count agents)]
     (loop [idx 0]
       (when (< idx size)
-        (let [a (aget agents idx)]
-          (distance2! agents a radius)
-          (m/+! (.-acc a) (m/+ (swarm-separate agents a radius separation)
-                               (swarm-align agents a radius alignment)
-                               (swarm-cohere agents a radius cohesion))))
+        (let [a   (aget agents idx)
+              acc (.-acc a)
+              num (distance2! agents a radius)]
+          (if (zero? num)
+            (m/+! acc (v/randvec3))
+            (m/+! acc (m/+ (swarm-separate agents a radius separation)
+                           (swarm-align agents a radius alignment)
+                           (swarm-cohere agents a radius cohesion)))))
         (recur (inc idx))))))

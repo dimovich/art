@@ -16,7 +16,7 @@
         trail   (r/ring-buffer (* 3 (:trail-size config)))
         canvas  (.getElementById js/document (:canvas config))]
 
-    (set! (.-width canvas)  (* 0.9 (.-innerWidth js/window)))
+    (set! (.-width canvas) (.-innerWidth js/window))
     (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
   
     {:trail  (a/update-trail trail agents)
