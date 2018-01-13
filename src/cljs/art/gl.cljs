@@ -25,7 +25,7 @@
 (def shader-spec
   {:vs "void main() {
           gl_Position = proj * view * model * vec4(position, 1.0);
-          gl_PointSize = 7.0 - min(gl_Position.w, 4.0);
+          gl_PointSize = 8.0 - min(gl_Position.w, 4.0);
           p = normalize(position);
           vCol = vec4(p.x, p.y, p.z, 1);
         }"
@@ -104,7 +104,7 @@
                          (gl/make-buffers-in-spec gl glc/static-draw)
                          (update :uniforms merge
                                  {:view (mat/look-at (vec3 0 1 0) (vec3 0 1 0) (vec3 0 1 0))
-                                  :proj (mat/perspective 60 view 0.1 100)}))
+                                  :proj (mat/perspective 56 view 0.1 100)}))
         
         particles    (-> {:attribs  {:position {:data (attrib-buffer-view positions)
                                                 :size   3
@@ -115,7 +115,7 @@
                          (assoc :shader (sh/make-shader-from-spec gl shader-spec))
                          (update :uniforms merge
                                  {:view (mat/look-at (vec3 0 1 0) (vec3 0 1 0) (vec3 0 1 0))
-                                  :proj (mat/perspective 60 view 0.1 100)}))]
+                                  :proj (mat/perspective 56 view 0.1 100)}))]
     
     (when-not (:cam @state)
       (init-arcball! state dom view))

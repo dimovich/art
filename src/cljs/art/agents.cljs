@@ -197,18 +197,27 @@
 
 
 
+(defn inbounds? [v p]
+  (reduce
+   #(and %1 %2)
+   (map #(and (>= %1 0) (<= %1 %2)) p v)))
+
+
+
 (defn swarm
   [agents {:keys [radius cohesion separation
                   alignment size]}]
   
-  (let [size (count agents)]
+  (let [num (count agents)]
     (loop [idx 0]
-      (when (< idx size)
+      (when (< idx num)
         (let [a   (aget agents idx)
+              pos (.-pos a)
               acc (.-acc a)
               num (distance2! agents a radius)]
           (if (zero? num)
-            (m/+! acc (v/randvec3))
+            (when (inbounds? size pos)
+              (m/+! acc (v/randvec3)))
             (m/+! acc (m/+ (swarm-separate agents a radius separation)
                            (swarm-align agents a radius alignment)
                            (swarm-cohere agents a radius cohesion)))))
