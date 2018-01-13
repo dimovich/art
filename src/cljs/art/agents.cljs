@@ -166,19 +166,8 @@
 
 
 
-(defn distance [agents a others]
-  (let [size (count others)
-        pos (.-pos a)]
-    (loop [idx 0 dists []]
-      (if (< idx size)
-        (let [o (get others idx)]
-          (recur (inc idx)
-                 (conj dists (g/dist pos (.-pos (aget agents o)))))) 
-        dists))))
 
-
-
-(defn distance2! [agents a r]
+(defn distance! [agents a r]
   (let [size (count agents)
         pos (.-pos a)]
     (loop [idx 0 num 0]
@@ -197,13 +186,6 @@
 
 
 
-(defn inbounds? [v p]
-  (reduce
-   #(and %1 %2)
-   (map #(and (>= %1 0) (<= %1 %2)) p v)))
-
-
-
 (defn swarm
   [agents {:keys [radius cohesion separation
                   alignment size]}]
@@ -212,13 +194,10 @@
     (loop [idx 0]
       (when (< idx num)
         (let [a   (aget agents idx)
-              pos (.-pos a)
               acc (.-acc a)
-              num (distance2! agents a radius)]
-          (if (zero? num)
-            (when (inbounds? size pos)
-              (m/+! acc (v/randvec3)))
+              num (distance! agents a radius)]
+          (when-not (zero? num)
             (m/+! acc (m/+ (swarm-separate agents a radius separation)
-                           (swarm-align agents a radius alignment)
-                           (swarm-cohere agents a radius cohesion)))))
+                           (swarm-align    agents a radius alignment)
+                           (swarm-cohere   agents a radius cohesion)))))
         (recur (inc idx))))))

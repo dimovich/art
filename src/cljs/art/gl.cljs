@@ -25,7 +25,7 @@
 (def shader-spec
   {:vs "void main() {
           gl_Position = proj * view * model * vec4(position, 1.0);
-          gl_PointSize = 8.0 - min(gl_Position.w, 4.0);
+          gl_PointSize = 7.0 - min(gl_Position.w, 4.0);
           p = normalize(position);
           vCol = vec4(p.x, p.y, p.z, 1);
         }"
@@ -91,6 +91,9 @@
         gl           (gl/gl-context dom)
         view         (gl/get-viewport-rect gl)
 
+        uniforms     {:view (mat/look-at (vec3 0 1 0) (vec3 0 1 0) (vec3 0 1 0))
+                      :proj (mat/perspective 50 view 0.1 100)}
+        
         box          (-> (aa/aabb 2)
                          (g/center)
                          (g/as-mesh
@@ -102,9 +105,7 @@
                          (gl/as-gl-buffer-spec {})
                          (assoc :shader (sh/make-shader-from-spec gl (basic/make-shader-spec-3d true)))
                          (gl/make-buffers-in-spec gl glc/static-draw)
-                         (update :uniforms merge
-                                 {:view (mat/look-at (vec3 0 1 0) (vec3 0 1 0) (vec3 0 1 0))
-                                  :proj (mat/perspective 56 view 0.1 100)}))
+                         (update :uniforms merge uniforms))
         
         particles    (-> {:attribs  {:position {:data (attrib-buffer-view positions)
                                                 :size   3
@@ -113,9 +114,7 @@
                           :num-vertices (/ (count positions) 3)}
                          (gl/make-buffers-in-spec gl glc/dynamic-draw)
                          (assoc :shader (sh/make-shader-from-spec gl shader-spec))
-                         (update :uniforms merge
-                                 {:view (mat/look-at (vec3 0 1 0) (vec3 0 1 0) (vec3 0 1 0))
-                                  :proj (mat/perspective 56 view 0.1 100)}))]
+                         (update :uniforms merge uniforms))]
     
     (when-not (:cam @state)
       (init-arcball! state dom view))
@@ -148,7 +147,7 @@
                 (-> (:container scene)
                     (assoc-in [:uniforms :model]
                               (-> (arc/get-view cam)
-                                  (g/scale 0.08)))))
+                                  (g/scale 0.1)))))
            
                (gl/draw-with-shader
                 (-> (:particles scene)
@@ -156,6 +155,6 @@
                     (assoc-in [:uniforms :model]
                               (-> (arc/get-view cam)
                                   (g/translate translate)
-                                  (g/scale 0.08)))))))
+                                  (g/scale 0.1)))))))
            true))))))
 
