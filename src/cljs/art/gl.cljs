@@ -135,7 +135,8 @@
   (let [start-uuid (:uuid @state)]
     (anim/animate
      (fn [t frame]
-       (when (:active @state)
+       (when (and (:active @state)
+                  (zero? (mod frame 3)))
          (swap! state c/update-state))
 
        (let [{:keys [gl scene cam translate uuid static agents]
@@ -145,13 +146,13 @@
              (update-attrib-buffer gl scene :position agents 10 agent-count)
              (doto gl
                (gl/clear-color-and-depth-buffer col/WHITE 1)
-             
+               
                (gl/draw-with-shader
                 (-> (:container scene)
                     (assoc-in [:uniforms :model]
                               (-> (arc/get-view cam)
                                   (g/scale 0.1)))))
-           
+               
                (gl/draw-with-shader
                 (-> (:particles scene)
                     (assoc :num-vertices agent-count)
