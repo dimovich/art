@@ -106,7 +106,7 @@ static Agent* generate_agents(Vec3 size, float speed, uint32_t agent_count) {
 
   for(uint32_t i=0; i < agent_count; i++) {
     a = &agents[i];
-    setVec3(&a->pos, randf()*size.x, randf()*size.y, randf()*size.z);
+    setVec3(&a->pos, randf01()*size.x, randf01()*size.y, randf01()*size.z);
     setVec3(&a->vel, randf()*speed, randf()*speed, randf()*speed);
     setVec3(&a->acc, 0, 0, 0);
     a->dist = 0;
@@ -154,13 +154,18 @@ static void bounce(AgentSystem *sys) {
   for(uint32_t i=0; i < sys->agent_count; i++) {
     a = &sys->agents[i];
     
-    if((a->pos.x < 0) || (a->pos.x > sys->size.x)) {
+    if(((a->pos.x < 0) && (a->vel.x < 0)) ||
+       ((a->pos.x > sys->size.x) && (a->vel.x > 0))) {
       a->vel.x *= -1.0f;
     }
-    if((a->pos.y < 0) || (a->pos.y > sys->size.y)) {
+
+    if(((a->pos.y < 0) && (a->vel.y < 0)) ||
+       ((a->pos.y > sys->size.y) && (a->vel.y > 0))) {
       a->vel.y *= -1.0f;
     }
-    if((a->pos.z < 0) || (a->pos.z > sys->size.z)) {
+
+    if(((a->pos.z < 0) && (a->vel.z < 0)) ||
+       ((a->pos.z > sys->size.z) && (a->vel.z > 0))) {
       a->vel.z *= -1.0f;
     }
   }
@@ -337,10 +342,3 @@ EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_system(AgentSystem* sys) {
   return sys;
 }
 
-/*
-int main() {
-  char *foo = "Hello Emscripten!";
-  printf("%s\n", foo);
-  return 0;
-}
-*/
