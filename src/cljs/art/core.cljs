@@ -3,7 +3,8 @@
             [art.cmodule :as c]
             [art.dynamic :as art]
             [art.config  :refer [config]]
-            [taoensso.timbre :refer [info]]))
+            ;;[taoensso.timbre :refer [info]]
+            ))
 
 
 (def state (atom {:active true

@@ -1,6 +1,6 @@
 (ns art.gl
   (:require
-   [taoensso.timbre :refer [info]]
+   ;;[taoensso.timbre :refer [info]]
    [art.config :refer [config]]
    [thi.ng.math.core :as m :refer [PI HALF_PI TWO_PI]]
    [thi.ng.color.core :as col]

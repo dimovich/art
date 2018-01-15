@@ -1,5 +1,5 @@
 (ns art.dynamic
-  (:require [taoensso.timbre :refer [info]]
+  (:require ;;[taoensso.timbre :refer [info]]
             [amalloy.ring-buffer :as r]
             [art.config :refer [config]]
             [art.gl     :as agl]

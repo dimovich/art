@@ -2,13 +2,13 @@
 
 
 (def config {:canvas "art"
-             :agent-count 100
-             :size [13 13 13]
+             :agent-count 80
+             :size [13.0 13.0 13.0]
              :radius 3
              :cohesion 0
-             :separation 0.04
-             :alignment 0.05
-             :max-swarm 0.08
+             :separation 0
+             :alignment 0
+             :max-swarm 0.1
              :speed 0.18
              :max-speed 0.4
              :trail-size 130})
