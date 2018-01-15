@@ -5,8 +5,7 @@
    [thi.ng.math.core :as m]
    [thi.ng.geom.vector :as v]
    [thi.ng.geom.spatialtree :as t]
-   [taoensso.timbre :refer [info]]
-   [art.agents :as a]))
+   [taoensso.timbre :refer [info]]))
 
 #_(
  (def config {:agent-count 100

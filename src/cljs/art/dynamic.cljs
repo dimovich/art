@@ -1,36 +1,26 @@
 (ns art.dynamic
   (:require [taoensso.timbre :refer [info]]
-            [thi.ng.geom.core    :as g]
-            [thi.ng.geom.vector  :as v]
-            [thi.ng.math.core    :as m]
             [amalloy.ring-buffer :as r]
             [art.config :refer [config]]
-            [art.agents :as a]
-            [art.gl     :as agl]))
+            [art.gl     :as agl]
+            [art.cmodule :as c]))
 
 
 
 (defn setup [config]
   (let [size    (:size config)
-        agents  (a/generate-agents config)
+        sys     (c/init config)
         trail   (r/ring-buffer (* 3 (:trail-size config)))
         canvas  (.getElementById js/document (:canvas config))]
 
     (set! (.-width canvas) (.-innerWidth js/window))
     (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
   
-    {:trail  (a/update-trail trail agents)
+    {;;:trail  (a/update-trail trail agents)
      :uuid   (.. (js/Date.) getTime)
-     :agents agents
+     :sys    sys
+     :agents (c/c-agents-ptr sys)
      :canvas canvas}))
-
-
-
-(defn update-state [state]
-  (let [{:keys [agents config]} state]
-    ((juxt a/move a/swarm a/bounce) agents config)
-    (update state :trail a/update-trail agents)))
-
 
 
 (defn create! [state]
@@ -41,7 +31,7 @@
          (swap! state merge))
     
     (agl/init-app-3d state)
-    (agl/update-app-3d state update-state)
+    (agl/update-app-3d state)
 
     (swap! state assoc :static static)))
 

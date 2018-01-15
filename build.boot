@@ -32,13 +32,13 @@
 
 
 (task-options! cljs  {:compiler-options
-                      {:output-to  "js/main.js"
+                      {:output-to  "js/art.js"
                        :output-dir "js/out"
                        :asset-path "js/out"
                        :parallel-build true
                        :main 'art.core
                        ;;:pseudo-names true
-                       }})
+                       :externs ["externs.js"]}})
 
 
 
@@ -69,7 +69,11 @@
   (task-options! cljs  {:optimizations :advanced})
   (comp
    (cljs)
-   (sift :include #{#"js/.*js$" #"index.html$" #"css/.*css$" #"svg/.*svg$" #"fonts/.*"})
+   (sift :include #{#"js/.*js$"
+                    #"index.html$"
+                    #"css/.*css$"
+                    #"svg/.*svg$"
+                    #"fonts/.*"})
    (target :dir #{"release-js"})))
 
 

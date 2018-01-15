@@ -1,14 +1,13 @@
 (ns art.core
   (:require [dommy.core  :as d]
+            [art.cmodule :as c]
             [art.dynamic :as art]
             [art.config  :refer [config]]
             [taoensso.timbre :refer [info]]))
 
 
-
 (def state (atom {:active true
                   :config config}))
-
 
 
 (defn set-range-input [state max k]
@@ -20,9 +19,11 @@
       (d/listen!
        el :input
        (fn [e]
-         (some->> (.-value (.-target e))
-                  (* 0.01 max)
-                  (swap! state assoc-in [:config k])))))))
+         (when-let [v (.-value (.-target e))]
+           (->> v
+                (* 0.01 max)
+                (swap! state assoc-in [:config k]))
+           (c/update-config (:sys @state) (:config @state))))))))
 
 
 
@@ -51,9 +52,8 @@
                        (get-in @state [:config :max-swarm])))
          doall)
 
-    (set-range-input state 0.4 :max-vel)
-    (set-range-input state (get-in @state [:config :size 0])
-                     :radius)))
+    (set-range-input state (get-in @state [:config :max-speed]) :speed)
+    (set-range-input state (get-in @state [:config :size 0]) :radius)))
 
 
 

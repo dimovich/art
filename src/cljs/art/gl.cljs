@@ -1,11 +1,9 @@
 (ns art.gl
   (:require
    [taoensso.timbre :refer [info]]
-   [art.agents :as a]
    [art.config :refer [config]]
    [thi.ng.math.core :as m :refer [PI HALF_PI TWO_PI]]
    [thi.ng.color.core :as col]
-   [thi.ng.typedarrays.core :as arrays]
    [thi.ng.geom.gl.core :as gl]
    [thi.ng.geom.gl.webgl.constants :as glc]
    [thi.ng.geom.gl.webgl.animator :as anim]
@@ -18,7 +16,8 @@
    [thi.ng.geom.aabb :as aa]
    [thi.ng.geom.gl.glmesh :as glm]
    [thi.ng.geom.attribs :as attr]
-   [thi.ng.geom.gl.shaders.basic :as basic]))
+   [thi.ng.geom.gl.shaders.basic :as basic]
+   [art.cmodule :as c]))
 
 
 
@@ -43,19 +42,18 @@
 
 
 (defn attrib-buffer-view
-  [data]
-  (arrays/float32 data))
+  [ptr stride num]
+  (js/Float32Array. (.-buffer (aget c/module "HEAPU8")) ptr (* stride num)))
 
 
 
 (defn update-attrib-buffer
-  [gl scene attrib data]
+  [gl scene attrib ptr stride num]
   (.bindBuffer gl glc/array-buffer
                (get-in scene [:particles :attribs attrib :buffer]))
   (.bufferData gl glc/array-buffer
-               (attrib-buffer-view data)
+               (attrib-buffer-view ptr stride num)
                glc/dynamic-draw))
-
 
 
 
@@ -83,10 +81,11 @@
        (when (:mouse-down @state)
          (swap! state update :cam arc/drag (.-clientX e) (.-clientY e)))))))
 
-
+;;guntt-chart
 
 (defn init-app-3d [state]
-  (let [positions    (:trail @state)
+  (let [agent-count  (-> @state :config :agent-count)
+        agents       (:agents @state)
         dom          (:canvas @state)
         gl           (gl/gl-context dom)
         view         (gl/get-viewport-rect gl)
@@ -106,12 +105,15 @@
                          (assoc :shader (sh/make-shader-from-spec gl (basic/make-shader-spec-3d true)))
                          (gl/make-buffers-in-spec gl glc/static-draw)
                          (update :uniforms merge uniforms))
-        
-        particles    (-> {:attribs  {:position {:data (attrib-buffer-view positions)
+
+        ;; 10 num of floats
+        ;; 40 num of bytes
+        ;; 3  num of vertices
+        particles    (-> {:attribs  {:position {:data (attrib-buffer-view agents 10 agent-count)
                                                 :size   3
-                                                :stride 12}}
+                                                :stride 40}}
                           :mode     glc/points
-                          :num-vertices (/ (count positions) 3)}
+                          :num-vertices agent-count}
                          (gl/make-buffers-in-spec gl glc/dynamic-draw)
                          (assoc :shader (sh/make-shader-from-spec gl shader-spec))
                          (update :uniforms merge uniforms))]
@@ -129,17 +131,18 @@
 
 
 (defn update-app-3d
-  [state update-fn]
+  [state]
   (let [start-uuid (:uuid @state)]
     (anim/animate
      (fn [t frame]
        (when (:active @state)
-         (swap! state update-fn))
+         (swap! state c/update-state))
 
-       (let [{:keys [gl scene trail cam translate uuid static]} @state]
+       (let [{:keys [gl scene cam translate uuid static agents]
+              {:keys [agent-count]} :config} @state]
          (when (= uuid start-uuid)
            (when-not static
-             (update-attrib-buffer gl scene :position trail)
+             (update-attrib-buffer gl scene :position agents 10 agent-count)
              (doto gl
                (gl/clear-color-and-depth-buffer col/WHITE 1)
              
@@ -151,7 +154,7 @@
            
                (gl/draw-with-shader
                 (-> (:particles scene)
-                    (assoc :num-vertices (/ (count trail) 3))
+                    (assoc :num-vertices agent-count)
                     (assoc-in [:uniforms :model]
                               (-> (arc/get-view cam)
                                   (g/translate translate)
