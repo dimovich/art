@@ -19,11 +19,11 @@ typedef struct {
 } Vec3;
 
 typedef struct {
-  Vec3  pos;  // 12 bytes
-  Vec3  vel;  // 12 bytes
-  Vec3  acc;  // 12 bytes
-  float dist; // 4 bytes
-} Agent; // 40 bytes
+  Vec3  pos;  // 12 bytes, 3 floats
+  Vec3  vel;  // 12 bytes, 3 floats
+  Vec3  acc;  // 12 bytes, 3 floats
+  float dist; // 4 bytes,  1 float
+} Agent; // 40 bytes, 10 floats
 
 typedef struct {
   Agent *agents;        // 4 bytes
@@ -139,7 +139,7 @@ static void move(AgentSystem *sys) {
     a = &sys->agents[i];
     copyVec3(&force, &a->vel);
     addVec3(&force, &a->acc);
-    limitVec3(&force, sys->speed);
+    normalizeVec3(&force, sys->speed);
     copyVec3(&a->vel,&force);
     addVec3(&a->pos, &a->vel);
     setVec3(&a->acc,0,0,0);
@@ -334,9 +334,9 @@ EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_config(AgentSystem *sys, float x,
 
 
 EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_system(AgentSystem* sys) {
-
-  swarm(sys);
+  
   move(sys);
+  swarm(sys);
   bounce(sys);
   
   return sys;

@@ -132,18 +132,20 @@
 
 (defn update-app-3d
   [state]
-  (let [start-uuid (:uuid @state)]
+  (let [start-uuid (:uuid @state)
+        delta (atom 0.0)]
     (anim/animate
      (fn [t frame]
+       (swap! delta + t)
        (when (and (:active @state)
-                  (zero? (mod frame 3)))
-         (swap! state c/update-state))
+                  (zero? (mod delta 15)))
+         (swap! state c/update-state)
+         (update-attrib-buffer gl scene :position agents 10 agent-count))
 
        (let [{:keys [gl scene cam translate uuid static agents]
               {:keys [agent-count]} :config} @state]
          (when (= uuid start-uuid)
            (when-not static
-             (update-attrib-buffer gl scene :position agents 10 agent-count)
              (doto gl
                (gl/clear-color-and-depth-buffer col/WHITE 1)
                

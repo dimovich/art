@@ -13,6 +13,6 @@ emcc -O2 -s ASM_JS=1 -s INVOKE_RUN=0 \
      -s MODULARIZE=1 \
      --memory-init-file 0 \
      --closure 1 \
-     -o release-js/js/agents.js \
+     -o resources/js/agents.js \
      ./src/c/agents.c
 
