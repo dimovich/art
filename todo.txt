@@ -1,28 +1,19 @@
+- emscripten
+  * ring buffer
+  * size and count config 
+    ~ create max, and just use current count
+  * octree
+
 - audio
 
-- find minimal fail case
+- try sphere bounds
 
-- CIDER debugger
-
-- try without swarm, only tree-fn
-
-- try THREE.js octree
-
-- try sphere and bounds
-
-* mutable ring buffer
-
-* dist agent field
-
-* emscripten
-
+- thi.ng bug
+  * find minimal fail case
+  * CIDER debugger
+  * adding two out-of-bounds points will create a endless loop
 
 
 three.js
 https://gist.github.com/seabre/9030268
 
-
-
-;;
-;; adding two out-of-bounds points will create a endless loop
-;;

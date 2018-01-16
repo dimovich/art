@@ -334,11 +334,9 @@ EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_config(AgentSystem *sys, float x,
 
 
 EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_system(AgentSystem* sys) {
-  
   move(sys);
   swarm(sys);
   bounce(sys);
-  
   return sys;
 }
 
