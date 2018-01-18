@@ -1,6 +1,5 @@
 (ns art.dynamic
   (:require ;;[taoensso.timbre :refer [info]]
-            [amalloy.ring-buffer :as r]
             [art.config :refer [config]]
             [art.gl     :as agl]
             [art.cmodule :as c]))
@@ -10,16 +9,13 @@
 (defn setup [config]
   (let [size    (:size config)
         sys     (c/init config)
-        trail   (r/ring-buffer (* 3 (:trail-size config)))
         canvas  (.getElementById js/document (:canvas config))]
 
     (set! (.-width canvas) (.-innerWidth js/window))
     (set! (.-height canvas) (* 0.9 (.-innerHeight js/window)))
   
-    {;;:trail  (a/update-trail trail agents)
-     :uuid   (.. (js/Date.) getTime)
+    {:uuid   (.. (js/Date.) getTime)
      :sys    sys
-     :agents (c/c-agents-ptr sys)
      :canvas canvas}))
 
 
@@ -48,6 +44,7 @@
   (let [canvas (:canvas @state)]
     (set! (.-width canvas) 1)
     (set! (.-height canvas) 1)
+    (c/c-destroy-agent-system (:sys @state))
     (swap! state select-keys
            [:active :static :config :cam])))
 

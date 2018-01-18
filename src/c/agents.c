@@ -3,6 +3,7 @@
 
 //#include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -14,9 +15,19 @@
 
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
+
 typedef struct {
   float x,y,z;
 } Vec3;
+
+
+typedef struct {
+  Vec3    *data;
+  uint32_t size;
+  uint32_t idx;
+  uint32_t used;
+} trail_t;
+
 
 typedef struct {
   Vec3  pos;  // 12 bytes, 3 floats
@@ -27,6 +38,10 @@ typedef struct {
 
 typedef struct {
   Agent *agents;        // 4 bytes
+  Vec3 *agents_pos;
+  Vec3 *agents_vel;
+  Vec3 *agents_acc;
+  float *agents_dist;
   uint32_t agent_count; // 4
   float speed;          // 4
   float cohesion;       // 4
@@ -34,7 +49,62 @@ typedef struct {
   float alignment;      // 4
   float radius;         // 4
   Vec3  size;           // 12
+  trail_t *trail;       // 4
 } AgentSystem;
+
+
+
+static trail_t* create_trail() {
+  trail_t *trail = (trail_t *)malloc(sizeof(trail_t));
+  trail->idx = 0;
+  trail->used = 0;
+  trail->size = 0;
+  trail->data = 0;
+  return trail;
+}
+
+
+static void update_trail_size(trail_t *trail, uint32_t size) {
+  Vec3 *tmp;
+  if(size > trail->size) {
+    tmp = (Vec3 *)malloc(size*sizeof(Vec3));
+    memcpy(tmp, trail->data, trail->size*sizeof(Vec3));
+    free(trail->data);
+    trail->data = tmp;
+  }
+  trail->size = size;
+}
+
+
+static inline void into_trail(trail_t *trail, Vec3 *p) {
+  trail->idx %= trail->size;
+  trail->data[trail->idx] = *p;
+  trail->idx++;
+  if(trail->used < trail->size) {
+    trail->used++;
+  } else {
+    trail->used = trail->size;
+  }
+}
+
+
+static inline void memcpy_trail(trail_t *trail, Vec3 *p, uint32_t size) {
+  uint32_t count = 0;
+  uint32_t chunk = 0;
+
+  while(count < size) {
+    trail->idx %= trail->size;
+    chunk = MIN(trail->size - trail->idx, size - count);
+    memcpy(&trail->data[trail->idx], &p[count], chunk*sizeof(Vec3));
+    count+=chunk;
+    trail->idx+=chunk;
+  }
+  trail->used += size;
+  if(trail->used > trail->size) {
+    trail->used = trail->size;
+  }
+}
+
 
 
 static inline void setVec3(Vec3 *v, float x, float y, float z) {
@@ -100,92 +170,70 @@ static inline float randf() {
 }
 
 
-static Agent* generate_agents(Vec3 size, float speed, uint32_t agent_count) {
-  Agent *agents = (Agent*)malloc(agent_count * sizeof(Agent));
-  Agent *a;
+static void generate_agents(AgentSystem *sys) {
+  sys->agents_pos = (Vec3 *)malloc(sys->agent_count*sizeof(Vec3));
+  sys->agents_vel = (Vec3 *)malloc(sys->agent_count*sizeof(Vec3));
+  sys->agents_acc = (Vec3 *)malloc(sys->agent_count*sizeof(Vec3));
+  sys->agents_dist = (float *)malloc(sys->agent_count*sizeof(float));
 
-  for(uint32_t i=0; i < agent_count; i++) {
-    a = &agents[i];
-    setVec3(&a->pos, randf01()*size.x, randf01()*size.y, randf01()*size.z);
-    setVec3(&a->vel, randf()*speed, randf()*speed, randf()*speed);
-    setVec3(&a->acc, 0, 0, 0);
-    a->dist = 0;
-  }
+  for(uint32_t i=0; i < sys->agent_count; i++) {
 
-  return agents;
-}
+    setVec3(&sys->agents_pos[i], randf01()*sys->size.x,
+	    randf01()*sys->size.y, randf01()*sys->size.z);
+    
+    setVec3(&sys->agents_vel[i], randf()*sys->speed,
+	    randf()*sys->speed, randf()*sys->speed);
 
+    setVec3(&sys->agents_acc[i], 0, 0, 0);
 
-
-static inline void limitVec3(Vec3 *v, float l) {
-  float *v2 = (float *)v;
-  float ratio = 0.0f;
-  for(uint32_t i = 0; i<3; i++ ) {
-    if(v2[i] > l) {
-      ratio = l / v2[i];
-      for(uint32_t j = 0; j<3; j++ ) {
-	v2[j] *= ratio;
-      }
-    }
+    sys->agents_dist[i] = 0;
   }
 }
+
 
 
 static void move(AgentSystem *sys) {
-  Agent *a;
-  Vec3 force;
-
   for(uint32_t i=0; i < sys->agent_count; i++) {
-    a = &sys->agents[i];
-    copyVec3(&force, &a->vel);
-    addVec3(&force, &a->acc);
-    normalizeVec3(&force, sys->speed);
-    copyVec3(&a->vel,&force);
-    addVec3(&a->pos, &a->vel);
-    setVec3(&a->acc,0,0,0);
+    addVec3(&sys->agents_vel[i], &sys->agents_acc[i]);
+    normalizeVec3(&sys->agents_vel[i], sys->speed);
+    addVec3(&sys->agents_pos[i], &sys->agents_vel[i]);
+    setVec3(&sys->agents_acc[i],0,0,0);
   }
+  memcpy_trail(sys->trail, sys->agents_pos, sys->agent_count);
 }
 
 
- 
+
 static void bounce(AgentSystem *sys) {
-  Agent *a;
-
   for(uint32_t i=0; i < sys->agent_count; i++) {
-    a = &sys->agents[i];
-    
-    if(((a->pos.x < 0) && (a->vel.x < 0)) ||
-       ((a->pos.x > sys->size.x) && (a->vel.x > 0))) {
-      a->vel.x *= -1.0f;
+    if(((sys->agents_pos[i].x < 0) && (sys->agents_vel[i].x < 0)) ||
+       ((sys->agents_pos[i].x > sys->size.x) && (sys->agents_vel[i].x > 0))) {
+      sys->agents_vel[i].x *= -1.0f;
     }
 
-    if(((a->pos.y < 0) && (a->vel.y < 0)) ||
-       ((a->pos.y > sys->size.y) && (a->vel.y > 0))) {
-      a->vel.y *= -1.0f;
+    if(((sys->agents_pos[i].y < 0) && (sys->agents_vel[i].y < 0)) ||
+       ((sys->agents_pos[i].y > sys->size.y) && (sys->agents_vel[i].y > 0))) {
+      sys->agents_vel[i].y *= -1.0f;
     }
 
-    if(((a->pos.z < 0) && (a->vel.z < 0)) ||
-       ((a->pos.z > sys->size.z) && (a->vel.z > 0))) {
-      a->vel.z *= -1.0f;
+    if(((sys->agents_pos[i].z < 0) && (sys->agents_vel[i].z < 0)) ||
+       ((sys->agents_pos[i].z > sys->size.z) && (sys->agents_vel[i].z > 0))) {
+      sys->agents_vel[i].z *= -1.0f;
     }
   }
 }
 
 
-
- static void swarm_separate(AgentSystem *sys, Agent *a, Vec3 *result) {
+ static void swarm_separate(AgentSystem *sys, uint32_t idx, Vec3 *result) {
    Vec3 tmp, force;
-   Agent *other;
 
    setVec3(&force,0,0,0);
    
    for(uint32_t i=0; i < sys->agent_count; i++) {
-     other = &sys->agents[i];
-     
-     if(other->dist) {
-       copyVec3(&tmp, &a->pos);
-       subVec3(&tmp, &other->pos);
-       scaleVec3(&tmp, sys->radius / other->dist);
+     if(sys->agents_dist[i]) {
+       copyVec3(&tmp, &sys->agents_pos[idx]);
+       subVec3(&tmp, &sys->agents_pos[i]);
+       scaleVec3(&tmp, sys->radius / sys->agents_dist[i]);
        addVec3(&force, &tmp);
      }
    }
@@ -196,20 +244,16 @@ static void bounce(AgentSystem *sys) {
  }
 
 
-
- static void swarm_align(AgentSystem *sys, Agent *a, Vec3 *result) {
-   Vec3 tmp, force;
-   Agent *other;
+ static void swarm_align(AgentSystem *sys, uint32_t idx, Vec3 *result) {
+   static Vec3 tmp, force;
    uint32_t near = 0;
 
    setVec3(&force,0,0,0);
    
    for(uint32_t i=0; i < sys->agent_count; i++) {
-     other = &sys->agents[i];
-     
-     if(other->dist) {
-       copyVec3(&tmp, &other->vel);
-       scaleVec3(&tmp, sys->radius / other->dist);
+     if(sys->agents_dist[i]) {
+       copyVec3(&tmp, &sys->agents_vel[i]);
+       scaleVec3(&tmp, sys->radius / sys->agents_dist[i]);
        addVec3(&force, &tmp);
        near++;
      }
@@ -224,28 +268,25 @@ static void bounce(AgentSystem *sys) {
  }
 
 
-
- static void swarm_cohere(AgentSystem *sys, Agent *a, Vec3 *result) {
-   Vec3 tmp, force;
-   Agent *other;
+ static void swarm_cohere(AgentSystem *sys, uint32_t idx, Vec3 *result) {
+   static Vec3 force;
    uint32_t near = 0;
    float dist;
 
    setVec3(&force,0,0,0);
 
    for(uint32_t i=0; i < sys->agent_count; i++) {
-     other = &sys->agents[i];
-     if(other->dist) {
-       addVec3(&force, &other->pos);
+     if(sys->agents_dist[i]) {
+       addVec3(&force, &sys->agents_pos[i]);
        near++;
      }
    }
 
    if(near) {
      scaleVec3(&force, 1.0f / near);
-     dist = distVec3(&a->pos, &force);
+     dist = distVec3(&sys->agents_pos[idx], &force);
      if(dist) {
-       subVec3(&force, &a->pos);
+       subVec3(&force, &sys->agents_pos[idx]);
        scaleVec3(&force, sys->radius / dist);
        normalizeVec3(&force, 1.0f);
        scaleVec3(&force, sys->cohesion);
@@ -255,17 +296,15 @@ static void bounce(AgentSystem *sys) {
  }
 
 
- static int swarm_distance(AgentSystem *sys, Agent *a) {
-   Agent *other;
+ static int swarm_distance(AgentSystem *sys, uint32_t idx) {
    int count = 0;
    float dist;
 
    for(uint32_t i=0; i < sys->agent_count; i++) {
-     other = &sys->agents[i];
-     other->dist = 0;
-     dist = distVec3(&a->pos, &other->pos);
+     sys->agents_dist[i] = 0;
+     dist = distVec3(&sys->agents_pos[idx], &sys->agents_pos[i]);
      if(dist && (dist < sys->radius)) {
-       other->dist = dist;
+       sys->agents_dist[i] = dist;
        count++;
      }
    }
@@ -273,41 +312,47 @@ static void bounce(AgentSystem *sys) {
  }
 
 
+
  static void swarm(AgentSystem *sys) {
    Vec3 force;
-   Agent *a;
    
    for(uint32_t i=0; i < sys->agent_count; i++) {
-     a = &sys->agents[i];
-
-     if(swarm_distance(sys,a)) {
+     if(swarm_distance(sys,i)) {
        setVec3(&force,0,0,0);
-       swarm_separate(sys, a, &force);
-       swarm_align(sys, a, &force);
-       swarm_cohere(sys, a, &force);
-       addVec3(&a->acc, &force);
+       swarm_separate(sys, i, &force);
+       swarm_align(sys, i, &force);
+       swarm_cohere(sys, i, &force);
+       addVec3(&sys->agents_acc[i], &force);
      }
    }
  }
 
 
-uint32_t get_agent_count(AgentSystem* sys) {
+uint32_t get_agent_count(AgentSystem *sys) {
   return sys->agent_count;
 }
 
-Agent* get_agents_pointer(AgentSystem* sys) {
+Agent* get_agents_pointer(AgentSystem *sys) {
   return sys->agents;
+}
+
+Vec3* get_trail_pointer(AgentSystem *sys) {
+  return sys->trail->data;
+}
+
+uint32_t get_trail_size(AgentSystem *sys) {
+  return sys->trail->used;
 }
 
 
 float get_agent_component(AgentSystem* sys, uint32_t idx, uint32_t component) {
-  float *pos = (float*)&(sys->agents[idx]).pos;
+  float *pos = (float*)&sys->agents_pos[idx];
   return pos[component];
 }
 
 
 EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_config(AgentSystem *sys, float x, float y, float z, uint32_t count, float cohesion,
-						      float separation, float alignment, float speed, float radius) {
+						      float separation, float alignment, float speed, float radius, float trail_size) {
 
    setVec3(&sys->size, x, y, z);
    sys->agent_count = count;
@@ -316,21 +361,31 @@ EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_config(AgentSystem *sys, float x,
    sys->alignment = alignment;
    sys->speed = speed;
    sys->radius = radius;
+   update_trail_size(sys->trail, (uint32_t)(trail_size*count));
    
    return sys;
 }
 
 
  EMSCRIPTEN_KEEPALIVE AgentSystem* init_agent_system(float x, float y, float z, uint32_t count, float cohesion,
-						     float separation, float alignment, float speed, float radius) {
+						     float separation, float alignment, float speed, float radius, float trail_size) {
   AgentSystem *sys = (AgentSystem*)malloc(sizeof(AgentSystem));
-
-  update_agent_config(sys, x, y, z, count, cohesion, separation, alignment, speed, radius);
-  sys->agents = generate_agents(sys->size, sys->speed, sys->agent_count);
+  sys->trail = create_trail();
+  update_agent_config(sys, x, y, z, count, cohesion, separation, alignment, speed, radius, trail_size);
+  generate_agents(sys);
+  memcpy_trail(sys->trail, sys->agents_pos, sys->agent_count);
 
   return sys;
 }
 
+
+void destroy_agent_system(AgentSystem* sys) {
+  free(sys->agents_pos);
+  free(sys->agents_vel);
+  free(sys->agents_acc);
+  free(sys->agents_dist);
+  free(sys);
+}
 
 
 EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_system(AgentSystem* sys) {

@@ -11,20 +11,24 @@
                   :config config}))
 
 
-(defn set-range-input [state max k]
-  (when-let [el (d/sel1 (->> k name (str "#") keyword))]
-    (let [val (get-in @state [:config k])]
+(defn set-range-input
+  ([state k min max]
+   (set-range-input state k min max (float (/ (- max min) 100))))
+  ([state k min max step]
+   (when-let [el (d/sel1 (->> k name (str "#") keyword))]
+     (let [val (get-in @state [:config k])]
+
+       (set! (.-min el) min)
+       (set! (.-max el) max)
+       (set! (.-step el) step)
+       (set! (.-value el) val)
       
-      (set! (.-value el) (* (/ val max) 100))
-      
-      (d/listen!
-       el :input
-       (fn [e]
-         (when-let [v (.-value (.-target e))]
-           (->> v
-                (* 0.01 max)
-                (swap! state assoc-in [:config k]))
-           (c/update-config (:sys @state) (:config @state))))))))
+       (d/listen!
+        el :input
+        (fn [e]
+          (when-let [v (.-value (.-target e))]
+            (swap! state assoc-in [:config k] v)
+            (c/update-config (:sys @state) (:config @state)))))))))
 
 
 
@@ -49,12 +53,14 @@
     (d/listen! refresher :click #(art/restart! state))
 
     (->> [:cohesion :separation :alignment]
-         (map (partial set-range-input state
-                       (get-in @state [:config :max-swarm])))
+         (map #(set-range-input
+                state %
+                0 (get-in @state [:config :max-swarm])))
          doall)
 
-    (set-range-input state (get-in @state [:config :max-speed]) :speed)
-    (set-range-input state (get-in @state [:config :size 0]) :radius)))
+    (set-range-input state :speed  0 (get-in @state [:config :max-speed]))
+    (set-range-input state :radius 0 (get-in @state [:config :size 0]))
+    (set-range-input state :trail-size 1 10)))
 
 
 

@@ -84,8 +84,9 @@
 ;;guntt-chart
 
 (defn init-app-3d [state]
-  (let [agent-count  (-> @state :config :agent-count)
-        agents       (:agents @state)
+  (let [sys          (:sys @state)
+        trail        (c/c-trail-ptr sys)
+        trail-size   (c/c-trail-size sys)
         dom          (:canvas @state)
         gl           (gl/gl-context dom)
         view         (gl/get-viewport-rect gl)
@@ -109,11 +110,11 @@
         ;; 10 num of floats
         ;; 40 num of bytes
         ;; 3  num of vertices
-        particles    (-> {:attribs  {:position {:data (attrib-buffer-view agents 10 agent-count)
+        particles    (-> {:attribs  {:position {:data (attrib-buffer-view trail 3 trail-size)
                                                 :size   3
-                                                :stride 40}}
+                                                :stride 12}}
                           :mode     glc/points
-                          :num-vertices agent-count}
+                          :num-vertices trail-size}
                          (gl/make-buffers-in-spec gl glc/dynamic-draw)
                          (assoc :shader (sh/make-shader-from-spec gl shader-spec))
                          (update :uniforms merge uniforms))]
@@ -138,11 +139,12 @@
        (when (:active @state)
          (swap! state c/update-state))
 
-       (let [{:keys [gl scene cam translate uuid static agents]
-              {:keys [agent-count]} :config} @state]
+       (let [{:keys [gl scene cam translate uuid static sys]} @state
+             trail (c/c-trail-ptr sys)
+             trail-size (c/c-trail-size sys)]
          (when (= uuid start-uuid)
            (when-not static
-             (update-attrib-buffer gl scene :position agents 10 agent-count)
+             (update-attrib-buffer gl scene :position trail 3 trail-size)
              (doto gl
                (gl/clear-color-and-depth-buffer col/WHITE 1)
                
@@ -154,7 +156,7 @@
                
                (gl/draw-with-shader
                 (-> (:particles scene)
-                    (assoc :num-vertices agent-count)
+                    (assoc :num-vertices trail-size)
                     (assoc-in [:uniforms :model]
                               (-> (arc/get-view cam)
                                   (g/translate translate)
