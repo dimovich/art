@@ -148,11 +148,11 @@
              (doto gl
                (gl/clear-color-and-depth-buffer col/WHITE 1)
                
-               (gl/draw-with-shader
-                (-> (:container scene)
-                    (assoc-in [:uniforms :model]
-                              (-> (arc/get-view cam)
-                                  (g/scale 0.08)))))
+               #_(gl/draw-with-shader
+                  (-> (:container scene)
+                      (assoc-in [:uniforms :model]
+                                (-> (arc/get-view cam)
+                                    (g/scale 0.08)))))
                
                (gl/draw-with-shader
                 (-> (:particles scene)

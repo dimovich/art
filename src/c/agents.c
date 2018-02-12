@@ -54,24 +54,22 @@ typedef struct {
 
 
 
-static trail_t* create_trail() {
+static void create_trail(AgentSystem *sys, uint32_t max_trail) {
   trail_t *trail = (trail_t *)malloc(sizeof(trail_t));
   trail->idx = 0;
   trail->used = 0;
   trail->size = 0;
-  trail->data = 0;
-  return trail;
+  trail->data = (Vec3 *)malloc(max_trail*sizeof(Vec3));;
+  sys->trail = trail;
+}
+
+static void destroy_trail(AgentSystem *sys) {
+  free(sys->trail->data);
+  free(sys->trail);
 }
 
 
 static void update_trail_size(trail_t *trail, uint32_t size) {
-  Vec3 *tmp;
-  if(size > trail->size) {
-    tmp = (Vec3 *)malloc(size*sizeof(Vec3));
-    memcpy(tmp, trail->data, trail->size*sizeof(Vec3));
-    free(trail->data);
-    trail->data = tmp;
-  }
   trail->size = size;
 }
 
@@ -170,24 +168,38 @@ static inline float randf() {
 }
 
 
-static void generate_agents(AgentSystem *sys) {
-  sys->agents_pos = (Vec3 *)malloc(sys->agent_count*sizeof(Vec3));
-  sys->agents_vel = (Vec3 *)malloc(sys->agent_count*sizeof(Vec3));
-  sys->agents_acc = (Vec3 *)malloc(sys->agent_count*sizeof(Vec3));
-  sys->agents_dist = (float *)malloc(sys->agent_count*sizeof(float));
+static void init_agents(AgentSystem *sys, uint32_t start, uint32_t end) {
+    for(uint32_t i = start; i < end; i++) {
 
-  for(uint32_t i=0; i < sys->agent_count; i++) {
-
-    setVec3(&sys->agents_pos[i], randf01()*sys->size.x,
-	    randf01()*sys->size.y, randf01()*sys->size.z);
+      setVec3(&sys->agents_pos[i], randf01()*sys->size.x,
+	      randf01()*sys->size.y, randf01()*sys->size.z);
     
-    setVec3(&sys->agents_vel[i], randf()*sys->speed,
-	    randf()*sys->speed, randf()*sys->speed);
+      setVec3(&sys->agents_vel[i], randf()*sys->speed,
+	      randf()*sys->speed, randf()*sys->speed);
 
-    setVec3(&sys->agents_acc[i], 0, 0, 0);
+      setVec3(&sys->agents_acc[i], 0, 0, 0);
 
-    sys->agents_dist[i] = 0;
+      sys->agents_dist[i] = 0;
+    }
+}
+
+
+static void update_agent_count(AgentSystem *sys, uint32_t count) {
+  if(sys->agent_count < count) {
+    init_agents(sys, sys->agent_count, count);
   }
+  sys->agent_count = count;
+}
+
+
+
+static void create_agents(AgentSystem *sys, uint32_t max_count) {
+  sys->agents_pos = (Vec3 *)malloc(max_count*sizeof(Vec3));
+  sys->agents_vel = (Vec3 *)malloc(max_count*sizeof(Vec3));
+  sys->agents_acc = (Vec3 *)malloc(max_count*sizeof(Vec3));
+  sys->agents_dist = (float *)malloc(max_count*sizeof(float));
+  
+  sys->agent_count = 0;
 }
 
 
@@ -355,24 +367,24 @@ EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_config(AgentSystem *sys, float x,
 						      float separation, float alignment, float speed, float radius, float trail_size) {
 
    setVec3(&sys->size, x, y, z);
-   sys->agent_count = count;
    sys->separation = separation;
    sys->cohesion = cohesion;
    sys->alignment = alignment;
    sys->speed = speed;
    sys->radius = radius;
+   update_agent_count(sys, count);
    update_trail_size(sys->trail, (uint32_t)(trail_size*count));
    
    return sys;
 }
 
 
- EMSCRIPTEN_KEEPALIVE AgentSystem* init_agent_system(float x, float y, float z, uint32_t count, float cohesion,
-						     float separation, float alignment, float speed, float radius, float trail_size) {
+EMSCRIPTEN_KEEPALIVE AgentSystem* init_agent_system(float x, float y, float z, uint32_t count, uint32_t max_agents, float cohesion,
+						    float separation, float alignment, float speed, float radius, float trail_size, uint32_t max_trail) {
   AgentSystem *sys = (AgentSystem*)malloc(sizeof(AgentSystem));
-  sys->trail = create_trail();
+  create_trail(sys, max_trail*max_agents);
+  create_agents(sys, max_agents);
   update_agent_config(sys, x, y, z, count, cohesion, separation, alignment, speed, radius, trail_size);
-  generate_agents(sys);
   memcpy_trail(sys->trail, sys->agents_pos, sys->agent_count);
 
   return sys;
@@ -380,6 +392,7 @@ EMSCRIPTEN_KEEPALIVE AgentSystem* update_agent_config(AgentSystem *sys, float x,
 
 
 void destroy_agent_system(AgentSystem* sys) {
+  destroy_trail(sys);
   free(sys->agents_pos);
   free(sys->agents_vel);
   free(sys->agents_acc);

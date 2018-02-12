@@ -1,12 +1,11 @@
 (ns art.cmodule)
 
-
 (def module (js/Agents))
 
 
 (def c-init           (.cwrap module "init_agent_system" "*"
-                              #js ["number" "number" "number" "number"
-                                   "number" "number" "number" "number" "number"]))
+                              #js ["number" "number" "number" "number" "number"
+                                   "number" "number" "number" "number" "number" "number"]))
 (def c-update-config  (.cwrap module "update_agent_config" "*"
                               #js ["number" "number" "number" "number" "number"
                                    "number" "number" "number" "number" "number"]))
@@ -38,9 +37,9 @@
 
 (defn init
   [{:keys [speed cohesion separation alignment
-           radius agent-count trail-size]
+           radius agent-count max-agents trail-size max-trail]
     [x y z] :size}]
   
-  (c-init x y z agent-count cohesion separation
-          alignment speed radius trail-size))
+  (c-init x y z agent-count max-agents cohesion separation
+          alignment speed radius trail-size max-trail))
 

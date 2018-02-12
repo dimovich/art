@@ -34,7 +34,8 @@
 
 (defn init [state]
   (let [player    (d/sel1 :.control-wrapper)
-        refresher (d/sel1 :.refresh-wrapper)]
+        refresher (d/sel1 :.refresh-wrapper)
+        config    (:config @state)]
     
     (d/listen! player :click
                (fn [_]
@@ -55,12 +56,13 @@
     (->> [:cohesion :separation :alignment]
          (map #(set-range-input
                 state %
-                0 (get-in @state [:config :max-swarm])))
+                0 (:max-swarm config)))
          doall)
 
-    (set-range-input state :speed  0 (get-in @state [:config :max-speed]))
-    (set-range-input state :radius 0 (get-in @state [:config :size 0]))
-    (set-range-input state :trail-size 1 10)))
+    (set-range-input state :speed  0 (:max-speed config))
+    (set-range-input state :radius 0 (get-in config [:size 0]))
+    (set-range-input state :trail-size 1 (:max-trail config))
+    (set-range-input state :agent-count 1 (:max-agents config))))
 
 
 
