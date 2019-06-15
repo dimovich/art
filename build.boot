@@ -17,7 +17,7 @@
                  [org.clojure/test.check "0.10.0-alpha2"]
 
                  [amalloy/ring-buffer "1.2.1"]
-                 [thi.ng/geom "0.0.1178-SNAPSHOT"]
+                 [thi.ng/geom "1.0.0-RC3" #_"0.0.1178-SNAPSHOT"]
 
                  [prismatic/dommy "1.1.0"]
                  [com.taoensso/timbre "4.10.0"]])
